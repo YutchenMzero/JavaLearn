@@ -26,4 +26,14 @@ markdown [教程](https://blog.csdn.net/u014061630/article/details/81359144);
     * 强制结束进程`-9`
     * 正常结束进程`-15`
    <font size=1>\**详细内容参考`man kill`*</font>
-
+5. killall ***根据名称'杀死'进程(<u>kill</u> processes by name)***
+   * 杀死指定名字的所有进程`killall <name>`
+   * 终止某个用户的进程`-u <username>`
+   * 终止运行超过`-o <time>`或小于`-y <time>`某个时长的进程
+  <font size=1>\**详细内容参考`man killall`*</font>
+6. netstat ***监控TCP/IP网络的工具***
+   * 显示进程名和pid`-p`
+   * 只显示监听端口`-l`
+   * 显示网络统计信息`-s`
+   * 显示tcp`-t`或udp`-u`网络
+<font size=1>\**详细内容参考`man netstat`*</font>
