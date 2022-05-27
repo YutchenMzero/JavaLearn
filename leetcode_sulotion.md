@@ -36,3 +36,33 @@ public class Solution {
 }
 ```
 ### 动态规划法求解最长回文串
+```java
+public class Solution {
+    public String longestPalindrome(String s) {
+        int len =s.length();
+        if (len<2){
+            return s;
+        }
+        int begin = 0,max_len = 1;
+        char[] char_array=s.toCharArray();
+        boolean [][]dp =new boolean[len][len];
+        for(int j=1;j<len;j++){
+            for(int i=0;i<j;i++){
+               if(char_array[i]==char_array[j]&&(j-i<3||dp[i+1][j-1])){
+                   dp[i][j]=true;
+                   if(j-i+1>max_len){
+                       max_len=j-i+1;
+                       begin=i;
+                   }
+               }
+            }
+        }
+        return s.substring(begin,begin+max_len);
+    }
+    @Test
+    public void test(){
+        String s=new String("ccc");
+        System.out.println(longestPalindrome(s));
+    }
+}
+```
