@@ -1,6 +1,6 @@
 markdown [教程](https://blog.csdn.net/u014061630/article/details/81359144);
 
-### Linux命令
+#### Linux命令
 
 1. apt[^1] ***软件包管理***
    [^1]:分为`apt`,`apt-get`,`apt-cache`,其中`apt`集成了后两者的功能，并于16.04版本后被推荐使用。
@@ -38,7 +38,7 @@ markdown [教程](https://blog.csdn.net/u014061630/article/details/81359144);
    * 显示tcp`-t`或udp`-u`网络
 <font size=1>\**详细内容参考`man netstat`*</font>
 
-### 环境变量配制
+#### 环境变量配制
 Linux配制环境变量有多种方式，此处只介绍在profile中修改的两种方法，首先是直接在profile文件中修改，此处不做详细介绍`sudo vim /etc/profile`，其次是在/etc/profile.d目录下增加配制环境变量的shell文件，这两种方法均可做到所有用户有效。其具体流程如下：
 
 1. 进入profile.d目录`cd /etc/profile.d`
@@ -59,3 +59,10 @@ if [ -d /etc/profile.d ]; then
 fi
 ```
 对/etc/profile.d中的.sh文件进行遍历，实现环境变量的导入。
+
+#### 配制ssh服务器
+所需软件包openssh-server,通过`ps -e | grep ssh`查看服务器是否启动，可通过以下命令启动或重启服务器`/etc/init.d/ssh start`,`/etc/init.d/ssh restart`.
+1. 查看主机ip地址`ifconfig`
+2. 创建新用户`useradd <username> -ms /bin/bash`并修改密码`passwd <username>`
+3. 连接ssh服务器`ssh <username>@<host_ip>`
+4. 
