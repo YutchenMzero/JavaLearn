@@ -65,4 +65,6 @@ fi
 1. 查看主机ip地址`ifconfig`
 2. 创建新用户`useradd <username> -ms /bin/bash`并修改密码`passwd <username>`
 3. 连接ssh服务器`ssh <username>@<host_ip>`
-4. 
+
+#### 配制vpn
+1. 没有L2TP协议,通过`sudo apt-get install network-manager-l2tp-gnome`下载，并重启后即可
