@@ -327,7 +327,7 @@ this part start at page 256
 1. 由于限制了Java虚拟机操作码的长度为一个字节，Class文件格式放弃了编译后代码的操作数长度对齐（除了tableswitch和lookupswitch），这就意味着虚拟机在处理那些超过一个字节的数据时，不得不在运行时从字节中重建出具体数据的结构，譬如要将一个16位长度的无符号整数使用两个无符号字节存储起来（假设将它们命名为byte1和byte2），那它们的值应该是这样：`(byte1 << 8) | byte2`。
 2. 在不考虑异常处理的前提下，Java虚拟即的解释器可以用下面的伪代码作为最基本的执行模型：
    ![解释器执行模型](JVMpic/9.png)
-[字节码详细说明](https://www.jianshu.com/p/5718ebecff84)
+[字节码详细说明](https://www.jianshu.com/p/571   8ebecff84)
 #### a. 字节码与数据类型
 &#8195;&#8195;对于大部分与数据类型相关的字节码指令，它们的操作码助记符中都有特殊的字符来表明专门为哪种数据类型服务：i代表对int类型的数据操作，l代表long，s代表short，b代表byte，c代表char，f代表float，d代表double，a代表reference。但并非每种数据类型和每一种操作都有对应的指令。
 1. 编译器会在编译期或运行期将byte和short类型的数据带符号扩展（Sign-Extend）为相应的int类型数据，将boolean和char类型数据零位扩展（Zero-Extend）为相应的int类型数据。与之类似，在处理boolean、byte、short和char类型的数组时，也会转换为使用对应的int类型的字节码指令来处理。
@@ -629,9 +629,274 @@ This guy has $2
    ![编译过程](JVMpic/12.png)
 1. 基于栈的指令集架构，字节码指令流里面的指令大部分都是零地址指令，它们依赖操作数栈进行工作。优点在于可移植，代码更加紧凑，编译器实现更简单，但执行速度慢（解释执行的状态下）。
 2. 基于寄存器的指令集，最典型的就是x86的二地址指令，这些指令依赖寄存器进行工作。
+### E. 远程执行功能的实现*
+#### a. 功能性需求
+1. 可以在服务端执行临时代码。
+2. 不依赖某个JDK版本才加入的特性（包括JVMTI），能在目前还被普遍使用的JDK中部署，只要是使用JDK 1.4以上的JDK都可以运行。
+3. 不改变原有服务端程序的部署，不依赖任何第三方类库。
+4. 不侵入原有程序，即无须改动原程序的任何代码。也不会对原有程序的运行带来任何影响。
+5. 考虑到BeanShell Script或JavaScript等脚本与Java对象交互起来不太方便，“临时代码”应该直接支持Java语言。
+6. “临时代码”应当具备足够的自由度，不需要依赖特定的类或实现特定的接口。当“临时代码”需要引用其他类库时也没有限制，只要服务端程序能使用的类型和接口，临时代码都应当能直接引用。
+7. “临时代码”的执行结果能返回到客户端，执行结果可以包括程序中输出的信息及抛出的异常等
+#### b. 实现
+1. 使同一个类的代码可以被多次加载
+```java 
+/**
+ * 为了多次载入执行类而加入的加载器
+ * 把defineClass方法开放出来，只有外部显式调用的时候才会使用到loadByte方法
+ * 使用该方法把提交执行的Java类的byte[]数组转变为Class对象。
+ * 由虚拟机调用时，仍然按照原有的双亲委派规则使用loadClass方法进行类加载
+ *
+ */
+public class HotSwapClassLoader extends ClassLoader {
+    public HotSwapClassLoader() {
+        super(HotSwapClassLoader.class.getClassLoader());
+    }
+    public Class loadByte(byte[] classByte) {
+        return defineClass(null, classByte, 0, classByte.length);
+    }
+}
+```
+2. 实现将java.lang.System替换为我们自己定义的HackSystem类的过程，它直接修改符合Class文件格式的byte[]数组中的常量池部分，将常量池中指定内容的CONSTANT_Utf8_info常量替换为新的字符串。
+```java
+/**
+* 修改Class文件，暂时只提供修改常量池常量的功能
+ */
+public class ClassModifier {
+    /**
+     * Class文件中常量池的起始偏移
+     */
+    private static final int CONSTANT_POOL_COUNT_INDEX = 8;
+    /**
+     * CONSTANT_Utf8_info常量的tag标志
+     */
+    private static final int CONSTANT_Utf8_info = 1;
+    /**
+     * 常量池中11种常量所占的长度，CONSTANT_Utf8_info型常量除外，因为它不是定长的
+     * 且除CONSTANT_Utf8_info型常量外的其他常量从3开始
+     */
+    private static final int[] CONSTANT_ITEM_LENGTH = { -1, -1, -1, 5, 5, 9, 9, 3, 3, 5, 5, 5, 5 };
+    private static final int u1 = 1;
+    private static final int u2 = 2;
+    private byte[] classByte;
+    public ClassModifier(byte[] classByte) {
+        this.classByte = classByte;
+    }
+    /**
+     * 修改常量池中CONSTANT_Utf8_info常量的内容
+     * @param oldStr 修改前的字符串
+     * @param newStr 修改后的字符串
+     * @return 修改结果
+     */
+    public byte[] modifyUTF8Constant(String oldStr, String newStr) {
+        int cpc = getConstantPoolCount();
+        int offset = CONSTANT_POOL_COUNT_INDEX + u2;
+        for (int i = 0; i < cpc; i++) {
+            int tag = ByteUtils.bytes2Int(classByte, offset, u1);
+            if (tag == CONSTANT_Utf8_info) {
+                int len = ByteUtils.bytes2Int(classByte, offset + u1, u2);
+                offset += (u1 + u2);
+                String str = ByteUtils.bytes2String(classByte, offset, len);
+                if (str.equalsIgnoreCase(oldStr)) {
+                    byte[] strBytes = ByteUtils.string2Bytes(newStr);
+                    byte[] strLen = ByteUtils.int2Bytes(newStr.length(), u2);
+                    classByte = ByteUtils.bytesReplace(classByte, offset - u2, u2, strLen);
+                    classByte = ByteUtils.bytesReplace(classByte, offset, len, strBytes);
+                    return classByte;
+                } else {
+                    offset += len;
+                }
+            } else {
+                offset += CONSTANT_ITEM_LENGTH[tag];
+            }
+        }
+        return classByte;
+    }
+    /**
+     * 获取常量池中常量的数量
+     * @return 常量池数量
+     */
+    public int getConstantPoolCount() {
+        return ByteUtils.bytes2Int(classByte, CONSTANT_POOL_COUNT_INDEX, u2);
+    }
+}
+```
+对byte[]数据的替换操作
+```java
+/*
+* Bytes数组处理工具
+ */
+public class ByteUtils {
+    public static int bytes2Int(byte[] b, int start, int len) {
+        int sum = 0;
+        int end = start + len;
+        for (int i = start; i < end; i++) {
+           //此处将转型为int类型的btye和0xff做&运算，是为了保证其二进制补码的一致性，将高位置0
+           //如值为-120的btye类型，其转为int后，会在高位补1，这样在与其他btye拼接时就会出错。
+            int n = ((int) b[i]) & 0xff;
+            n <<= (--len) * 8;
+            sum = n + sum;
+        }
+        return sum;
+    }
+    public static byte[] int2Bytes(int value, int len) {
+        byte[] b = new byte[len];
+        for (int i = 0; i < len; i++) {
+            b[len - i - 1] = (byte) ((value >> 8 * i) & 0xff);
+        }
+        return b;
+    }
+    public static String bytes2String(byte[] b, int start, int len) {
+        return new String(b, start, len);
+    }
+    public static byte[] string2Bytes(String str) {
+        return str.getBytes();
+    }
+     /**
+     * 将原字节数组中，指定偏移量和数组长度的数据替换成指定字节数组中的内容
+     * @param originalBytes 原字节数组
+     * @param offset 所替换部分在原数组中的起始偏移
+     * @param len 所替换部分在原数组中的长度
+     * @param replaceBytes 要替换的字节数组
+     * @return 修改结果
+     */
+    public static byte[] bytesReplace(byte[] originalBytes, int offset, int len, byte[] replaceBytes) {
+        byte[] newBytes = new byte[originalBytes.length + (replaceBytes.length - len)];
+        System.arraycopy(originalBytes, 0, newBytes, 0, offset);
+        System.arraycopy(replaceBytes, 0, newBytes, offset, replaceBytes.length);
+        System.arraycopy(originalBytes, offset + len, newBytes, offset + replaceBytes.length, originalBytes.length - offset - len);
+        return newBytes;
+    }
+}
+```
+3. 把out和err两个静态变量改成使用ByteArrayOutputStream作为打印目标的同一个PrintStream对象，以及增加了读取、清理ByteArrayOutputStream中内容的`getBufferString()`和`clearBuffer()`方法。
+```java
+/**
+ * 为Javaclass劫持java.lang.System提供支持
+ * 除了out和err外，其余的都直接转发给System处理
+ *
+ */
+public class HackSystem {
+    public final static InputStream in = System.in;
+    private static ByteArrayOutputStream buffer = new ByteArrayOutputStream();
+    public final static PrintStream out = new PrintStream(buffer);
+    public final static PrintStream err = out;
+ public static String getBufferString() {
+        return buffer.toString();
+    }
+    public static void clearBuffer() {
+        buffer.reset();
+    }
+    public static void setSecurityManager(final SecurityManager s) {
+        System.setSecurityManager(s);
+    }
+    public static SecurityManager getSecurityManager() {
+        return System.getSecurityManager();
+    }
+    public static long currentTimeMillis() {
+        return System.currentTimeMillis();
+    }
+    public static void arraycopy(Object src, int srcPos, Object dest, int destPos, int length) {
+        System.arraycopy(src, srcPos, dest, destPos, length);
+    }
+    public static int identityHashCode(Object x) {
+        return System.identityHashCode(x);
+    }
+    // 下面所有的方法都与java.lang.System的名称一样
+    // 实现都是字节转调System的对应方法
+    // 因版面原因，省略了其他方法
+}
+```
+4. 提供给外部调用的入口，调用前面几个支持类组装逻辑，完成类加载工作
+```java
+/**
+ * Javaclass执行工具
+ *
+ */
+public class JavaclassExecuter {
+    /**
+     * 执行外部传过来的代表一个Java类的Byte数组<br>
+     * 将输入类的byte数组中代表java.lang.System的CONSTANT_Utf8_info常量修改为劫持后的HackSystem类
+     * 执行方法为该类的static main(String[] args)方法，输出结果为该类向System.out/err输出的信息
+     * @param classByte 代表一个Java类的Byte数组
+     * @return 执行结果
+     */
+    public static String execute(byte[] classByte) {
+        HackSystem.clearBuffer();
+        ClassModifier cm = new ClassModifier(classByte);
+        byte[] modiBytes = cm.modifyUTF8Constant("java/lang/System", "org/fenixsoft/classloading/execute/HackSystem");
+        HotSwapClassLoader loader = new HotSwapClassLoader();
+        Class clazz = loader.loadByte(modiBytes);
+        try {
+            Method method = clazz.getMethod("main", new Class[] { String[].class });
+            method.invoke(null, new String[] { null });
+        } catch (Throwable e) {
+            e.printStackTrace(HackSystem.out);
+        }
+        return HackSystem.getBufferString();
+    }
+}
+
+```
+
+
+   
 
 # 程序编译与代码优化
+## 七. 前端编译与优化
+1. 前端编译器：把*.java文件转变成*.class文件的过程--javac
+2. 即时编译器：运行期把字节码转变成本地机器码的过程--虚拟机的即时编译器
+### A. Javac编译器
+1. 编译过程：
+   *  准备过程：初始化插入式注解处理器。
+   *  解析与填充符号表过程：词法、语法分析；填充符号表
+   *  插入式注解处理器的注解处理过程：插入式注解处理器的执行阶段（该部分可能会生成新的符号，所以会再转到解析部分）
+   *  分析与字节码生成过程：标注检查；数据流及控制流分析；解语法糖；字节码生成
+2. 可以把插入式注解处理器看作是一组编译器的插件，当这些插件工作时，允许读取、修改、添加抽象语法树中的任意元素。如果这些插件在处理注解期间对语法树进行过修改，编译器将回到解析及填充符号表的过程重新处理，直到所有插入式注解处理器都没有再对语法树进行修改为止。
+### B. Java语法糖
+#### a. 泛型
+&#8195;&#8195;泛型的本质是参数化类型或者参数化多态的应用，即可以将操作的数据类型指定为方法签名中的一种特殊参数，这种参数类型能够用在类、接口和方法的创建中，分别构成泛型类、泛型接口和泛型方法。泛型让程序员能够针对泛化的数据类型编写相同的算法，这极大地增强了编程语言的类型系统及抽象能力。
+1. java与C#
+   * java泛型的实现方式：“类型擦除式泛型”。只在程序源码中存在，在编译后的字节码文件中，全部泛型都被替换为原来的裸类型（裸类型应被视为所有该类型泛型化实例的共同父类型）了，并且在相应的地方插入了强制转型代码，因此对于运行期的Java语言来说，ArrayList<int>与ArrayList<String>其实是同一个类型。
+   * C#泛型的实现方式：“具现化式泛型”。无论在程序源码里面、编译后的中间语言表示（这时候泛型是一个占位符）里面，抑或是运行期的CLR里面都是切实存在的，List<int>与List<string>就是两个不同的类型，它们由系统在运行期生成，有着自己独立的虚方法表和类型数据。
+2. java中的实现：在编译时把ArrayList<Integer>还原回ArrayList，只在元素访问、修改时自动插入一些强制类型转换和检查指令。
+3. 缺陷：
+   * 运行期无法取到泛型类型信息，因此无法对泛型进行实例判断，无法使用泛型创建对象和数组
+   * 不支持原始类型的泛型
+   * 出现不符合重载规则的使用
+4. 所谓的擦除，仅仅是对方法的Code属性中的字节码进行擦除，实际上元数据中还是保留了泛型信息，这也是我们在编码时能通过反射手段取得参数化类型的根本依据。
+#### b. 自动装箱、拆箱与遍历循环
+1. 遍历循环则是把代码还原成了迭代器的实现，这也是为何遍历循环需要被遍历的类实现Iterable接口的原因。
+2. 变长参数，它在调用的时候变成了一个数组类型的参数。
+#### c. 条件编译
+1. 包含常量的if语句不同于其他Java代码，它在编译阶段就会被“运行”,生成的字节码之中只包含可被执行到的部分。
+### C. 代码校验工具的实现
+start at the page 512
 
+## 八. 后端编译与优化
+### A. 即时编译器
+start at the page 520
+
+# 高效并发
+## 九. Java内存模型与线程
+&#8195;&#8195;共享内存多核系统：在多路处理器系统中，每个处理器都有自己的高速缓存，而它们又共享同一主内存。
+### A. Java内存模型
+&#8195;&#8195;是一种在特定的操作协议下，对特定的内存或高速缓存进行读写访问的过程抽象。主要目的是定义程序中各种变量的访问规则，即关注在虚拟机中把变量值存储到内存和从内存中取出变量值这样的底层细节
+#### a. 主内存与工作内存
+1. 所有的变量都存储在主内存中，每条线程有自己的工作内存，线程对变量的所有操作（读取、赋值等）都必须在工作内存中进行，而不能直接读写主内存中的数据。
+2. 线程间变量值的传递均需要通过主内存来完成（比如，线程A修改一个普通变量的值，然后向主内存进行回写，另外一条线程B在线程A回写完成了之后再对主内存进行读取操作，新变量值才会对线程B可见。）。
+#### b. 对于volatile型变量的特殊规则
+&#8195;&#8195;当一个变量被定义成volatile之后，它将具备两项特性：
+1. 第一项是保证此变量对所有线程的可见性
+   * 这里的“可见性”是指当一条线程修改了这个变量的值，新值对于其他线程来说是可以立即得知的。（使用前先刷新）
+   * “可见性”并不能保证线程安全，因为Java里面的运算操作符并非原子操作。
+   * 在不符合以下两条规则的运算场景中，我们仍然要通过加锁（使用synchronized、java.util.concurrent中的锁或原子类）来保证原子性：运算结果并不依赖变量的当前值，或者能够确保只有单一的线程修改变量的值；变量不需要与其他的状态变量共同参与不变约束。
+2. 第二个是禁止指令重排序优化（此操作是为了使处理器内部的运算单元能尽量被充分利用，属于机器级优化操作，指处理器采用了允许将多条指令不按程序规定的顺序分开发送给各个相应的电路单元进行处理）：
+   * 普通的变量仅会保证在该方法的执行过程中所有依赖赋值结果的地方都能获取到正确的结果，而不能保证变量赋值操作的顺序与程序代码中的执行顺序一致。
+3. Java内存模型中对volatile变量定义的特殊规则的定义，对于变量V：
+   * 每次使用V前都必须先从主内存刷新最新的值，用于保证能看见其他线程对变量V所做的修改。
+   * 在工作内存中，每次修改V后都必须立刻同步回主内存中，用于保证其他线程可以看到自己对变量V所做的修改。
+   * 变量不会被指令重排序优化，从而保证代码的执行顺序与程序的顺序相同。
 
 ---
-end at page 454
+end at page the 610
