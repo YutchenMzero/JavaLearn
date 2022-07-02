@@ -19,7 +19,10 @@
 &#8195;&#8195;抽象不应该依赖细节，细节应该依赖于抽象。高层模块不应该依赖底层模块，二者都应依赖于抽象。
 1. 即针对接口编程，不要针对实现编程。
 2. 若程序中所有的依赖关系都是终止于抽象类或者接口，则是面向对象的设计。
-#### E. 
+#### E. 迪米特法则
+&#8195;&#8195;也叫最少知识原则。如果两个类不必彼此直接通信，那么这两个类就不应当发生直接的相互作用。如果其中一个类需要调用另一个类的某一个方法的话，可以通过第三者转发这个调用。
+1. 在类的设计结构上，每一个类都应当尽量降低成员的访问权限。
+2. 在程序设计时，类之间的耦合越弱，越有利于复用，一个处在弱耦合的类被修改，不会对有关系的类造成波及。
 ## 设计模式
 ### 一. 简单工厂模式
 使用单独的工厂类进行创造实例的过程，实现功能的解耦。下图展示了一个简单工厂模式的UML的示意。
@@ -270,6 +273,234 @@ class Proxy extends Subjects{
     }
 }
 ```
+### 五. 工厂方法模式
+&#8195;&#8195;定义一个用于创建对象的接口，让子类决定实例化哪一个类。工厂方法使一个类的实例化延迟到其子类。其基本结构如下：
+![工厂方法模式](DesignPattern/4.png)
+```java
+public class Solution {
+    public static void main(String[] args){
+        ADCFactory adc_factory = new JinxFactory();
+        adc_factory.creatADC().doWork();
+        adc_factory = new AsheFactory();
+        adc_factory.creatADC().doWork();
+    }
+}
+abstract class ADC{
+    abstract void doWork();
+}
+class Ashe extends ADC{
+    @Override
+    void doWork() {
+        System.out.println("艾师傅正在刮痧！");
+    }
+}
+class Jinx extends ADC{
+    @Override
+    void doWork() {
+        System.out.println("爆爆杀疯了！");
+    }
+}
+interface ADCFactory{
+    ADC creatADC();
+}
+class AsheFactory implements ADCFactory{
+    @Override
+    public ADC creatADC() {
+        return new Ashe();
+    }
+}
+class JinxFactory implements ADCFactory{
+    @Override
+    public ADC creatADC() {
+        return new Jinx();
+    }
+}
+```
+#### 六. 原型模式
+&#8195;&#8195;用原型实例指定创建对象的种类，并且通过拷贝这些原型创建新的对象，其基本结构如下：
+![原型模式结构图](DesignPattern/5.png)
+1. 原型模式其实就是一个从一个对象再创建另外一个可定制的对象，而且不需要知道任何创建的细节。其关键在于有一个clone方法
+2. 浅复制与深复制
+3. 可直接通过实现Cloneable接口的方法实现，而不需要再自己声明Prototype接口
+```java
 
+public class Solution {
+    public static void main(String[] args) {
+        Review review = new Review("Yutchen");
+        review.setWork_summary("7月1日","学习JVM中线程安全与锁优化");
+        Review review1 = (Review) review.clone();
+        review1.setWork_summary("7月2日","学习设计模式");
+        review.show();
+        review1.show();
+    }
+}
+class Review implements Cloneable{
+    private String name;
+    private WorkSummary work_summary;
+
+    public Review(String name) {
+        this.name = name;
+        work_summary = new WorkSummary();
+    }
+
+    public void setWork_summary(String date,String work) {
+        work_summary.setWorkSummary(date,work);
+    }
+
+    public void show(){
+        System.out.println(name+work_summary.getDate()+work_summary.getWork());
+    }
+    //实现克隆方法时，先调用父类的克隆方法，再进行修正。
+    //克隆方法仅会复制变量的值，因此对于引用类型，相当于获得了其本身的句柄，而不是其“内涵”
+    public Review clone() {
+        Review review = null;
+        try {
+            review = (Review) super.clone();
+        } catch (CloneNotSupportedException e) {
+            throw new RuntimeException(e);
+        }
+        //实现深复制：2. 调用要深复制的变量的克隆方法，并将结果赋给该变量。
+        review.work_summary = work_summary.clone();
+        return review;
+    }
+}
+class WorkSummary implements Cloneable{
+    private String date;
+    private String work;
+    public void setWorkSummary(String date,String work){
+        this.date = date;
+        this.work = work;
+    }
+
+    public String getDate() {
+        return date;
+    }
+
+    public String getWork() {
+        return work;
+    }
+    //实现深复制：1. 在引用类型的变量所对应的类中实现克隆方法。
+    public WorkSummary clone()  {
+        try {
+            return (WorkSummary) super.clone();
+        } catch (CloneNotSupportedException e) {
+            throw new RuntimeException(e);
+        }
+    }
+}   
+```
+#### 七. 模板方法模式
+&#8195;&#8195;定义一个操作中的算法的骨架，而将一些步骤延迟到子类中去。该方法使得子类可以不改变一个算法的结构即可重定义该算法的某些特定步骤。（即在父类的方法中调用其他可被子类重写的方法）。其基本结构如下：
+![模板方法模式](DesignPattern/6.png)
+1. 既然用到了继承，并且这个继承有意义，就应该要成为子类的模板，所有重复的代码都应该上升到父类去，而不是让每个子类都去重复。
+2. 当要完成某一细节层次一致的一个过程或一系列步骤，但其个别步骤在更详细的层次上的实现可能不同时，通常考虑用模板方法模式来处理。
+```java
+
+public class Solution {
+    public static void main(String[] args) {
+        Team edg = new EDG();
+        Team ig = new IG();
+        edg.show();
+        ig.show();
+    }
+}
+abstract class Team{
+    public void show(){
+        teamName();
+        teamMember();
+        teamLeader();
+    }
+    protected abstract void teamName();
+    protected abstract void teamMember();
+    protected abstract void teamLeader();
+}
+class EDG extends Team{
+    @Override
+    public void teamName() {
+        System.out.println("EDG战队");
+    }
+
+    @Override
+    protected void teamMember() {
+        System.out.println("队员：Flandre,Jiejie,Scout,Viper,Meiko");
+    }
+
+    @Override
+    protected void teamLeader() {
+        System.out.println("教练：Maokai");
+    }
+}
+class IG extends Team{
+    @Override
+    protected void teamName() {
+        System.out.println("IG战队");
+    }
+
+    @Override
+    protected void teamMember() {
+        System.out.println("队员：Theshy,Ning,Rookie,Jackeylove,Baolan");
+    }
+
+    @Override
+    protected void teamLeader() {
+        System.out.println("教练：金晶洙");
+    }
+}
+```
+#### 八. 外观模式
+&#8195;&#8195;为子系统中的一组接口提供一个一致的界面，次模式定义了一个高层接口，这个接口使得这一子系统更加容易使用。（即提供功能接口，并封闭底层实现）其基本结构如下：
+![外观模式结构图](DesignPattern/7.png)
+&#8195;&#8195;使用时机：
+1. 在设计初期阶段，应该有意识的将不同的两个层分离，在层与层之间建立外观。
+2. 在开发阶段，子系统往往因为不断的重构演化而变得越来越复杂，增加外观类可以提供一个简单的接口，减少他们的依赖。
+3. 在维护一个打的遗留系统时，可能这个系统已经非常难以维护和扩展了，可以为新系统开发一个外观类来提供粗糙或高度复杂的遗留代码的比较清晰简单的接口，让新系统与外观对象交互。
+```java
+
+
+public class Solution {
+    public static void main(String[] args) {
+        Qiyana qiyana = new Qiyana();
+        qiyana.combo2();
+    }
+}
+class Qiyana{
+    private Skill_Q skill_q = new Skill_Q();
+    private Skill_W skill_w = new Skill_W();
+    private Skill_E skill_e = new Skill_E();
+    private Skill_R skill_r = new Skill_R();
+    public void combo1(){
+        skill_q.doWork();
+        skill_w.doWork();
+        skill_q.doWork();
+    }
+    public void combo2(){
+        skill_e.doWork();
+        skill_q.doWork();
+        skill_r.doWork();
+        skill_w.doWork();
+        skill_q.doWork();
+    }
+}
+class Skill_Q{
+    public void doWork(){
+        System.out.println("使用Q技能");
+    }
+}
+class Skill_W{
+    public void doWork(){
+        System.out.println("使用W技能");
+    }
+}
+class Skill_E{
+    public void doWork(){
+        System.out.println("使用E技能");
+    }
+}
+class Skill_R{
+    public void doWork(){
+        System.out.println("使用R技能");
+    }
+}
+```
 ---
-end at the page 85
+end at the page 130
