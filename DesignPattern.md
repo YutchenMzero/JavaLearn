@@ -113,6 +113,7 @@ class OperationFactory{
 ```java
 public class Solution {
     public static void main(String[] arg){
+        // 客户端只需要认识StrategyContext一个类，减少了耦合
         StrategyContext strategy_context = new StrategyContext("A");
         strategy_context.operationContextInterface();
     }
@@ -316,7 +317,7 @@ class JinxFactory implements ADCFactory{
     }
 }
 ```
-#### 六. 原型模式
+### 六. 原型模式
 &#8195;&#8195;用原型实例指定创建对象的种类，并且通过拷贝这些原型创建新的对象，其基本结构如下：
 ![原型模式结构图](DesignPattern/5.png)
 1. 原型模式其实就是一个从一个对象再创建另外一个可定制的对象，而且不需要知道任何创建的细节。其关键在于有一个clone方法
@@ -389,7 +390,7 @@ class WorkSummary implements Cloneable{
     }
 }   
 ```
-#### 七. 模板方法模式
+### 七. 模板方法模式
 &#8195;&#8195;定义一个操作中的算法的骨架，而将一些步骤延迟到子类中去。该方法使得子类可以不改变一个算法的结构即可重定义该算法的某些特定步骤。（即在父类的方法中调用其他可被子类重写的方法）。其基本结构如下：
 ![模板方法模式](DesignPattern/6.png)
 1. 既然用到了继承，并且这个继承有意义，就应该要成为子类的模板，所有重复的代码都应该上升到父类去，而不是让每个子类都去重复。
@@ -447,7 +448,7 @@ class IG extends Team{
     }
 }
 ```
-#### 八. 外观模式
+### 八. 外观模式
 &#8195;&#8195;为子系统中的一组接口提供一个一致的界面，次模式定义了一个高层接口，这个接口使得这一子系统更加容易使用。（即提供功能接口，并封闭底层实现）其基本结构如下：
 ![外观模式结构图](DesignPattern/7.png)
 &#8195;&#8195;使用时机：
@@ -502,5 +503,253 @@ class Skill_R{
     }
 }
 ```
+### 九. 建造者模式
+&#8195;&#8195;将一个复杂对象的构建与它的表示分离，使得同样的构建过程可以创建不同的表示。如果使用了建造者模式，那么用户就只需要指定需要建造的类型就可以得到他们，而具体建造的过程和细节就不需要知道了，由指挥者类来控制建造过程，隔离用户与建造过程的关联。其基本结构如下：
+![建造者模式结构图](DesignPattern/8.png)
+1. 主要用于创建一些复杂的对象，这些对象内部构建间的建造顺序通常是稳定的，但对象内部的构建通常面临这复杂的变化。
+```java
+import java.util.ArrayList;
+import java.util.List;
+
+public class Solution {
+    public static void main(String[] args) {
+        Builder builder = new ConcreteBuilder1();
+        Director director = new Director();
+        director.Construct(builder);
+        Product product = builder.getProduct();
+        product.show();
+    }
+}
+class Product{
+    private List<String> list =new ArrayList<>();
+    public void addPart(String s){
+        list.add(s);
+    }
+    public void show(){
+        for (String s: list) {
+            System.out.println(s);
+        }
+    }
+}
+class Director{
+    //由Director类保证创建流程的步骤和顺序
+   public void Construct(Builder builder){
+      builder.builderPart1();
+      builder.builderPart2();
+   }
+}
+abstract class Builder{
+    protected Product product = new Product();
+    abstract void builderPart1();
+    abstract void builderPart2();
+    public Product getProduct(){
+        return product;
+    }
+
+}
+class ConcreteBuilder1 extends Builder{
+    @Override
+    void builderPart1() {
+        product.addPart("组件A");
+    }
+
+    @Override
+    void builderPart2() {
+        product.addPart("组件B");
+    }
+}
+class ConcreteBuilder2 extends Builder{
+    @Override
+    void builderPart1() {
+        product.addPart("组件X");
+    }
+
+    @Override
+    void builderPart2() {
+        product.addPart("组件Y");
+    }
+}
+```
+### 十. 观察者模式
+&#8195;&#8195;该模式定义了一种一对多的依赖关系，让多个观察者对象同事监听某一个主题对象。这个主题对象在状态发生变化时，会通知所有观察者对象，使它们能够自动更新自己。其基本结构如下：
+![观察者模式结构图](DesignPattern/9.png)
+1. 将一个系统分割成一系列相互协作的类有一个很不好的副作用，那就是需要维护相关对象间的一致性。若为了维持一致性而使各类紧密耦合，这样会给维护、扩展和重用都带来不便。
+2. 一个Subject可以有任意数目的依赖它的Observer，一旦Subject的状态发生改变，所有的Observer都可以得到通知。
+3. 应该考虑用观察者模式的情况：
+   * 当一个对象的改变需要同事改变其他对象时，且它不知道具体有多少对象有待改变时
+   * 当一个抽象模型有两个方面，其中一个方面依赖与另一个方面，且要将两者封装在独立的对象中使他们各自独立地改变和复用。
+```java
+import java.util.ArrayList;
+import java.util.List;
+
+public class Solution {
+    public static void main(String[] args) {
+        ConcreteSubject subject = new ConcreteSubject();
+        subject.Attach(new ConcreteObserverA(subject,"小瓜"));
+        subject.Attach(new ConcreteObserverA(subject,"邦邦"));
+        subject.setSubjctState("开心");
+        subject.Notify();
+    }
+}
+abstract class Subject{
+    protected List<Observer> list = new ArrayList<>();
+    public void Attach(Observer observer){
+        list.add(observer);
+    }
+    public void Detach(Observer observer){
+        list.remove(observer);
+    }
+    public void Notify(){
+        for (Observer o:
+                list) {
+            o.Update();
+        }
+    }
+}
+class ConcreteSubject extends Subject{
+    private String subjct_state;
+
+    public String getSubjctState() {
+        return subjct_state;
+    }
+
+    public void setSubjctState(String subjct_state) {
+        this.subjct_state = subjct_state;
+    }
+}
+abstract class Observer{
+    public abstract void Update();
+}
+class ConcreteObserverA extends Observer{
+    //需要随着Subject类中subjct_state属性变化的属性。
+    private String observer_state;
+    private String name;
+    private ConcreteSubject subject;
+
+    public ConcreteObserverA(ConcreteSubject subject,String name) {
+        this.subject = subject;
+        this.name = name;
+    }
+
+    public String getObserver_state() {
+        return observer_state;
+    }
+
+    public void setObserver_state(String observer_state) {
+        this.observer_state = observer_state;
+    }
+
+    @Override
+    public void Update() {
+        observer_state = subject.getSubjctState();
+        System.out.println("观察者"+name+"的最新状态是"+observer_state);
+    }
+}
+```
+4. 委托是一种引用方法的的类型，可以看做是对函数的抽象，一旦为委托分配的方法，委托将与该方法具有完全相同的行为，而且搭载的方法不需要属于一个类。（Java中尚不支持该特性）
+### 十一. 抽象工厂模式
+&#8195;&#8195;提供一个创建一系列相关或者相互依赖对象的接口，而无需指定它们具体的类。其基本结构如下：
+![抽象工厂模式](DesignPattern/10.png)
+
+1. 利用反射技术替代对工厂的判断，即采用依赖注入的编程方式。
+2. 利用反射+配置文件替代在程序中的修改
+3. 可以用简单工厂代替抽象工厂，简化修改
+4. 在所有用到简单工厂的地方，都可以考虑使用反射技术来去除switch或if，解除分支判断带来的耦合。
+### 十二. 状态模式
+&#8195;&#8195;当一个对象的内在状态发生改变时允许改变其行为，这个对象看起来像是改变了其类。主要解决的是当控制一个对象状态转换的条件表达式过于复杂时的情况下，把状态的判断逻辑转移到表示不同状态的一系列类当中，可以把复杂的判断逻辑简化。
+![状态模式结构图](DesignPattern/11.png)
+1. 可以将特定状态相关的行为局部化，并且将不同状态的行为分割开来。即将特定的状态相关的行为都放入一个对象中，由于所有与状态相关的代码都存在于某个ConcreteState中，所以通过定义新的子类可以很容易地增加新的状态和转换。
+2. 将状态转移逻辑分布到State的子类之间，来减小相互间的依赖，以消除庞大的条件分支语句
+3. 当一个对象的行为取决于他的状态，并且他必须在运行时刻根据状态改变它的行为时，可考虑使用状态模式。
+```java
+//此处模拟所用的壁纸随时间轮换不同场景的简单逻辑
+public class Solution {
+    public static void main(String[] args) {
+        WallPaperEngine w = new WallPaperEngine(0);
+        w.showWallPaper();
+        w.setTime(6);
+        w.showWallPaper();
+        w.setTime(14);
+        w.showWallPaper();
+
+    }
+}
+//壁纸引擎类
+class WallPaperEngine{
+    private int time;
+    private State state;
+
+    public int getTime() {
+        return time;
+    }
+
+    public void setTime(int time) {
+        this.time = time;
+    }
+    public void setState(State state) {
+        this.state = state;
+    }
+
+    WallPaperEngine(int time) {
+        this.time = time;
+        this.state = new StateNight();
+    }
+
+    public void showWallPaper(){
+        state.showWallPaper(this);
+    }
+}
+//状态类,将状态之间转换和对应的操作都封装在具体的State中
+abstract class State{
+    abstract public void showWallPaper(WallPaperEngine w);
+}
+class StateDawn extends State{
+    @Override
+    public void showWallPaper(WallPaperEngine w) {
+        if (w.getTime()<7){
+            System.out.println("美丽的清晨");
+        }else{
+            w.setState(new StateDayTime());
+            w.showWallPaper();
+        }
+    }
+}
+class StateDayTime extends State{
+    @Override
+    public void showWallPaper(WallPaperEngine w) {
+        if (w.getTime()<17){
+            System.out.println("热烈的白天");
+        }else{
+            w.setState(new StateDusk());
+            w.showWallPaper();
+        }
+    }
+}
+class StateDusk extends State{
+    @Override
+    public void showWallPaper(WallPaperEngine w) {
+        if (w.getTime()<19){
+            System.out.println("浪漫的黄昏");
+        }else{
+            w.setState(new StateNight());
+            w.showWallPaper();
+        }
+    }
+}
+class StateNight extends State{
+    @Override
+    public void showWallPaper(WallPaperEngine w) {
+        if (w.getTime()<5){
+            System.out.println("寂静的夜晚");
+        }else{
+            w.setState(new StateDawn());
+            w.showWallPaper();
+        }
+    }
+}
+```
+### 十三. 适配器模式
+
+ 
 ---
-end at the page 130
+end at the page 189
