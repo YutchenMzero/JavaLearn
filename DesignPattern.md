@@ -749,6 +749,39 @@ class StateNight extends State{
 }
 ```
 ### 十三. 适配器模式
+&#8195;&#8195;该模式将一个类的接口转换成客户希望的另一个接口，使得原本由于接口不兼容而不能一起工作的那些类可以一起工作。其基本结构：
+![适配器模式](DesignPattern/12.png)
+1. 系统的数据和行为都正确，但接口不符时，我们应该考虑使用适配器，目的是使控制范围之外的一个原有对象与某个接口匹配。其主要应用于希望复用一些现存的类，但是接口又与复用环境要求不一致的情况。
+2. 一般在开发后期或者维护期使用，即在双方都不太容易修改的时候再使用该模式，或者在使用第三方开发组件时。
+```java
+//使用适配器模式，将接口转换的代价集中到适配器中
+public class Solution {
+    public static void main(String[] args) {
+    MyTools myTools = new AdapterForMyTools();
+    myTools.doWork();
+    }
+}
+class MyTools{
+    public void doWork(){
+        System.out.println("使用独自开发的工具包。");
+    }
+}
+class OtherTools{
+    public void works(){
+        System.out.println("采用第三方工具包");
+    }
+}
+//采用适配器，调用其他接口
+class AdapterForMyTools extends MyTools{
+    OtherTools otherTools = new OtherTools();
+    @Override
+    public void doWork() {
+        otherTools.works();
+    }
+}
+```
+### 十四. 备忘录模式
+
 
  
 ---
