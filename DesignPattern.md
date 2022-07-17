@@ -781,8 +781,114 @@ class AdapterForMyTools extends MyTools{
 }
 ```
 ### 十四. 备忘录模式
+&#8195;&#8195;在不破坏封装性的前提下，捕获一个对象的内部状态，并在该对象之外保存这个状态，这样以后就可将对象恢复到原先保存的状态。其基本结构为：
+![备忘录模式结构图](DesignPattern/13.png)
+1. Caretaker只能看备忘录的窄接口，他只能将备忘录传递给其他对象。Originator能够看到一个宽接口，允许它访问返回到先前状态所需的所有数据。
+2. 当我们需要保存全部信息时，可以考虑使用clone的方式实现，但这相当于开放了全部public接口。而当需要保存部分信息时，可使用该模式，将保存的细节封装在备忘录类Memento中，并使其只拥有需要保存的信息。
+```java
+//使用备忘录模式，实现游戏杀戮尖塔中对人物信息存档功能的简单逻辑
+public class Solution {
+    public static void main(String[] args) {
+        int[] card = {1,2,3};
+        int[] treasure = {4,5,6};
+        String name = "战士";
+        Role role = new Role();
+        role.setState(78,card,treasure,name);
+        //创建一个caretaker，用于管理生成的备忘录
+        Caretaker caretaker = new Caretaker();
+        caretaker.setMemento(role.createMemento());
+        //角色状态发生变化
+        card[2]=4;
+        role.setState(72,card,treasure,name);
+        role.show();
+        //使用备忘录复原
+        role.Recover(caretaker.getMemento());
+        role.show();
+    }
+}
+//角色类
+class Role{
+    private int health;
+    private int[] card;
+    private int[] treasure;
+    private String name;
+    public void setState(int health, int[] card, int[] treasure, String name){
+        this.health = health;
+        this.card = card;
+        this.treasure = treasure;
+        this.name = name;
+    }
+    public void show(){
+        System.out.println(name+"还拥有"+health+"生命值");
+        for (int i:card
+             ) {
+            System.out.print(i);
+        }
+    }
 
+    /**
+     * 创建备忘录
+     * @return
+     */
+    public Memento createMemento(){
 
- 
+        return (new Memento(health,card,treasure,name));
+    }
+
+    /**
+     * 从备忘录中恢复数据
+     * @param memento
+     */
+    public void Recover(Memento memento){
+        card=memento.getCard();
+        health=memento.getHealth();
+        treasure=memento.getTreasure();
+        name=memento.getName();
+    }
+}
+
+//备忘录类中包含所要保存的所有属性
+class Memento{
+    private int health;
+    private int[] card ;
+    private int[] treasure;
+    private String name;
+
+    public int getHealth() {
+        return health;
+    }
+
+    public int[] getCard() {
+        return card;
+    }
+
+    public int[] getTreasure() {
+        return treasure;
+    }
+
+    public String getName() {
+        return name;
+    }
+
+    public Memento(int health, int[] card, int[] treasure, String name) {
+        this.health = health;
+        //对于数组，调用clone()方法，实现深复制
+        this.card = card.clone();
+        this.treasure = treasure.clone();
+        this.name = name;
+    }
+}
+class Caretaker{
+    private Memento memento;
+
+    public Memento getMemento() {
+        return memento;
+    }
+
+    public void setMemento(Memento memento) {
+        this.memento = memento;
+    }
+}
+```
 ---
-end at the page 189
+end at the page 198

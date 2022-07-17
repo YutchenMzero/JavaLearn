@@ -63,7 +63,7 @@ public boolean equals(Object obj) {
 ```
 成立，但不是必须的。重写Object类中的clone()方法需要实现Cloneable接口，否则会抛出CloneNotSupportedException；
 * Object类并未实现Cloneable接口，因此对Object类直接调用该方法会报错了；
-* 所有数组都被视为实现了Cloneable接口；
+* 所有数组都被视为实现了Cloneable接口；其实现过程可理解为对当前数组降一个维度后，挨个赋值。
 * 如果覆盖了非final类中的clone方法，则应该返回一个通过调用super.clone()而得到的对象；因此要尽量避免在clone方法中使用构造器；
 * 浅克隆对于引用类型而言，复制的是引用地址；深克隆对于引用类型而言，复制的是所引用的值。
 4. toString()
