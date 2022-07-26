@@ -23,6 +23,13 @@
 &#8195;&#8195;也叫最少知识原则。如果两个类不必彼此直接通信，那么这两个类就不应当发生直接的相互作用。如果其中一个类需要调用另一个类的某一个方法的话，可以通过第三者转发这个调用。
 1. 在类的设计结构上，每一个类都应当尽量降低成员的访问权限。
 2. 在程序设计时，类之间的耦合越弱，越有利于复用，一个处在弱耦合的类被修改，不会对有关系的类造成波及。
+#### F. 合成/聚合复用原则
+&#8195;&#8195;即尽量使用合成/聚合，尽量不要使用类继承。
+1. 优先使用对象的合成/聚合将有助于你保持每个类被封装，并被集中在单个任务上。这样类和类继承层次会保持较小规模，并且不太可能增长为不可控制的庞然大物。
+2. 继承身为一种强耦合的结构，一定要在“is-a”的关系时使用，否则会导致结构上的复杂与麻烦
+### 开发原则与注意事项
+1. 不要为代码添加基于猜测、实际不需要的功能。如果不清楚一个系统是否需要某项功能或模式，一般就不要急着去实现它。
+2. 尽管将一个系统划分为许多对象通常会增加其可复用性，但是对象间相互连接的激增又会降低其可复用性，因为大量的连接使得一个对象无法在没有其他对象支持下正常工作，系统将会表现为一个不可分割的整体，此时，进行改动将十分困难。
 ## 设计模式
 ### 一. 简单工厂模式
 使用单独的工厂类进行创造实例的过程，实现功能的解耦。下图展示了一个简单工厂模式的UML的示意。
@@ -890,5 +897,550 @@ class Caretaker{
     }
 }
 ```
+### 十五. 组合模式
+&#8195;&#8195;该模式将对象组合成树形结构以表示“部分-整体”的层次结构。使得用户对单个对象和组合对象的使用具有一致性。其基本结构为：
+![组合模式结构图](DesignPattern/14.png)
+1. 透明方式：在Component中声明所有用来管理子对象的方法，使叶节点和枝节点对于外界没有区别。但由于叶节点实际上不具备该功能，，所以实现它是没有意义的。
+2. 安全方式：不在Component中声明子对象不具备的方法，但由于不够透明，不同的实现类将具有不同的接口，客户端调用时要做相应的判断。
+3. 当发现需求中是体现部分与整体层次的结构时，且希望用户可以忽略组合对象和单个对象的不同，统一的使用组合结构中的所有对象时（如Word中对单个文字和整段文字调整格式），应该考虑使用组合模式。
+
+```java
+import java.util.ArrayList;
+import java.util.List;
+
+//使用组合结构，模拟实现公司架构逻辑
+public class Solution {
+    public static void main(String[] args) {
+        Company root = new ConcreteCompany("上海总公司");
+        root.Add(new HRDepartment("上海总公司人力管理部门"));
+        root.Add(new FinanceDepartment("上海总公司财务管理部门"));
+        Company company1 = new ConcreteCompany("青岛分公司");
+        company1.Add(new HRDepartment("青岛分公司人力管理部门"));
+        company1.Add(new FinanceDepartment("青岛分公司财务管理部门"));
+        root.Add(company1);
+        root.Display(1);
+        root.doWork();
+    }
+}
+abstract class Company{
+    private String name;
+
+    public String getName() {
+        return name;
+    }
+
+    public Company(String name){
+        this.name = name;
+    }
+    abstract public void Add(Company c);
+    abstract public void Remove(Company c);
+    abstract public void Display(int depth);
+    abstract public void doWork();
+}
+class HRDepartment extends Company{
+    public HRDepartment(String name) {
+        super(name);
+    }
+
+    @Override
+    public void Add(Company c) {
+
+    }
+
+    @Override
+    public void Remove(Company c) {
+
+    }
+
+    @Override
+    public void Display(int depth) {
+        System.out.println("第"+depth+"层"+getName());
+    }
+
+    @Override
+    public void doWork() {
+        System.out.println("负责"+getName()+"人力管理");
+    }
+}
+class FinanceDepartment extends Company{
+    public FinanceDepartment(String name) {
+        super(name);
+    }
+
+    @Override
+    public void Add(Company c) {
+
+    }
+
+    @Override
+    public void Remove(Company c) {
+
+    }
+
+    @Override
+    public void Display(int depth) {
+        System.out.println("第"+depth+"层"+getName());
+    }
+
+    @Override
+    public void doWork() {
+        System.out.println("负责"+getName()+"财务管理");
+    }
+}
+//具体公司类，作为枝节点
+class ConcreteCompany extends Company{
+    private List<Company> list = new ArrayList<>();
+    public ConcreteCompany(String name) {
+        super(name);
+    }
+
+    @Override
+    public void Add(Company c) {
+        list.add(c);
+    }
+
+    @Override
+    public void Remove(Company c) {
+        list.remove(c);
+    }
+
+    @Override
+    public void Display(int depth) {
+        System.out.println("第"+depth+"层"+getName());
+        for(Company c:list){
+            c.Display(depth+1);
+        }
+    }
+
+    @Override
+    public void doWork() {
+        for(Company c:list){
+            c.doWork();
+        }
+    }
+}
+```
+### 十六. 迭代器模式
+&#8195;&#8195;该模式提供一种方法顺序访问一个聚合对象中的各个元素，且还不会暴露该对象的内部表示。其基本结构为：
+![迭代器模式结构图](DesignPattern/15.png)
+1. 当需要访问一个聚类对象，且不管这些对象是什么都需要遍历的时候，或者需要对聚类有多种遍历方式时，可以考虑用该模式。该模式提供如开始、下一个、是否结束、当前项等统一的接口。
+2. 具体迭代器用以实现不同的迭代方法。
+3. 该模式目前已被大多高级语言封装，如`foreach`
+### 十七.单例模式
+&#8195;&#8195;该模式保证一个类仅有一个实例，并提供一个访问它的全局访问点。其基本结构为：
+![单例模式结构图](DesignPattern/16.png)
+1. 该模式将构造方法设为私有，并开放一个静态的接口用于获取本类实例的唯一访问点，在该接口中将判断该实例是否已被创建。
+2. 使用双重锁定来减少加锁对性能的影响，即先做判断再加锁，然后再在锁中做相同的判断。
+```java
+public class Solution {
+    public static void main(String[] args) {
+        Singleton singleton1 = Singleton.getSingleton();
+        Singleton singleton2 = Singleton.getSingleton();
+        singleton1.Add();
+        singleton2.Display();
+    }
+}
+class Singleton{
+    //声明一个全局的实例，此外静态方法getSingleton()只能访问静态变量
+    private static Singleton singleton;
+    private int num = 1;
+    private Singleton(){
+    }
+    //在多线程时，需要对此方法加锁
+    public static Singleton getSingleton(){
+        if (singleton==null){
+            singleton = new Singleton();
+        }
+        return singleton;
+    }
+    public void Add(){
+        num+=1;
+    }
+    public void Display(){
+        System.out.println(num);
+    }
+}
+```
+### 十八. 桥接模式
+&#8195;&#8195;该模式将抽象部分与它的实现部分分离，使它们都可以独立的变化。此处的实现是指抽象类和它的派生类用来实现自己的对象。例如学校的学生可以按班级来分类实现，也可以按性别来分类实现。其基本结构为：
+![桥接模式结构图](DesignPattern/17.png)
+1. 由于实现的方式有多种，桥接模式的核心意图就是把这些实现独立出来，让它们各自的变化，这使得每种实现的变化不会影响其他实现，从而达到应对变换的目的。
+2. 即一种将多对不同种类的抽象组合的可能，通过建立其根本抽象之间的联系，来减少整个结构的复杂度。例如上文中提到的学生，直接建立根本抽象类，即性别(包含男、女)和班级（包含1、2、3...班）之间的联系，来避免出现类似于2班男生，1班女生这样的类。
+```java
+//采用桥接模式使各种实现独立变化
+public class Solution {
+    public static void main(String[] args) {
+        MClass class_one = new MClassOne();
+        class_one.setStu(new Boy());
+        class_one.doWork();
+        MClass class_two = new MClassTwo();
+        class_two.setStu(new Girl());
+        class_two.doWork();
+        class_two.setStu(new Boy());
+        class_two.doWork();
+    }
+}
+abstract class MClass{
+    private Sex stu;
+    public void setStu(Sex stu) {
+        this.stu = stu;
+    }
+
+    public Sex getStu() {
+        return stu;
+    }
+
+    abstract public void doWork();
+}
+class MClassOne extends MClass{
+
+
+    @Override
+    public void doWork() {
+        System.out.print("一班");
+        getStu().doWork();
+    }
+}
+class MClassTwo extends MClass{
+    @Override
+    public void doWork() {
+        System.out.print("二班");
+        getStu().doWork();
+    }
+}
+abstract class Sex{
+    abstract void doWork();
+}
+class Boy extends Sex{
+    @Override
+    void doWork() {
+        System.out.println("男生去踢足球");
+    }
+}
+class Girl extends Sex{
+    @Override
+    void doWork() {
+        System.out.println("女生去跳皮筋");
+    }
+}
+```
+### 十九. 命令模式
+&#8195;&#8195;该模式将一个请求封装为一个对象，从而使你可用不同的请求对客户进行参数化；对请求排队或者记录请求日志，以及支持可撤销的操作。
+![命令模式结构图](DesignPattern/18.png)
+1. 对于请求排队或者记录请求日志，以及支持可撤销的操作等行为时，“行为请求者”和“行为实现者”的紧耦合会导致关系僵化，存在隐患。
+2. 该模式可以
+   * 较容易的设计一个命令队列
+   * 在需要的情况下，可以较容易的将命令记入日志
+   * 允许接受请求的一方决定是否要否决请求
+   * 可以容易的实现对请求的撤销和重做
+   * 由于加进新的具体命令类不影响其他的类，因此增加新的具体命令类很容易
+   * 把请求一个操作的对象和知道怎么执行一个操作的对象分离开了
 ---
-end at the page 198
+```java
+import java.util.ArrayList;
+import java.util.List;
+
+//采用命令模式来模拟老师通知学生干活的简单逻辑
+public class Solution {
+    public static void main(String[] args) {
+        Teacher teacher = new Teacher();
+        //课题有新的任务下发，老师将其分解成不同的命令指派给不同的学生，整个课题实现由学生完成，老师充当通知者，不参与实际操作
+        Command command = new CommandResearch();
+        command.setStudent(new Student("小A"));
+        Command command1 = new CommandWrite();
+        command1.setStudent(new Student("小B"));
+        teacher.addCommand(command);
+        teacher.addCommand(command1);
+        //将命令通知到个人
+        teacher.Notify();
+    }
+}
+//Invoker,由该类或者接收者去判断是否执行命令
+class Teacher{
+    private List<Command> list = new ArrayList<>();
+    public void addCommand(Command c){
+        list.add(c);
+    }
+    public void Notify(){
+        for(Command c : list){
+            c.doWork();
+        }
+    }
+
+}
+abstract class Command{
+    private Student student;
+
+    public void setStudent(Student student) {
+        this.student = student;
+    }
+
+    public Student getStudent() {
+        return student;
+    }
+
+    abstract void doWork();
+}
+//Receiver
+class Student{
+    private String name;
+
+    public Student(String name) {
+        this.name = name;
+    }
+
+    public void Write(){
+        System.out.println(name+"写材料!");
+    }
+    public void Research(){
+        System.out.println(name+"做科研!");
+    }
+}
+class CommandWrite extends Command{
+    @Override
+    void doWork() {
+        getStudent().Write();
+    }
+}
+class CommandResearch extends Command{
+    @Override
+    void doWork() {
+        getStudent().Research();
+    }
+}
+```
+### 二十. 职责链模式
+&#8195;&#8195;该模式使多个对象都有机会处理请求，从而避免请求的发送者和接收者之间的耦合关系。将这个对象连成一条链，并沿着这条链传递该请求，直到有一个对象处理它为止。其基本结构图如下：
+![职责链模式结构图](DesignPattern/19.png)
+1. 其中发出这个请求的客户端并不知道这当中的哪一个对象最终处理这个请求，这样系统的更改可以咋不影响客户端的情况下动态地重新组织和分配职责。
+2. 在该模式下，每个职责对象只需保持一个后继对象的引用，而不需要保持它所有候选接受者的引用；且由于是在客户端定义链的结构，因此可以随时修改处理流程的结构。
+3. 在该模式下，原有分支内的功能被分解到每一个处理者类中，而处理流程被分到客户端中，降低了修改的代价，避免了原来大量分支判断造成难维护、灵活性差的问题。
+```java
+//采用职责链模式模拟学生请假的简单逻辑
+public class Solution {
+    public static void main(String[] args) {
+        Handles fudaoyuan = new HandlesFuDaoYuan();
+        Handles daoshi = new HandlesDaoShi();
+        Handles shuji = new HandlesShuJi();
+        fudaoyuan.setSuccessor(daoshi);
+        daoshi.setSuccessor(shuji);
+        fudaoyuan.handleRequest(8);
+        fudaoyuan.handleRequest(2);
+
+    }
+}
+abstract class Handles{
+    private Handles handles;
+    public Handles getHandles() {
+        return handles;
+    }
+
+    public void setHandles(Handles handles) {
+        this.handles = handles;
+    }
+
+    public void setSuccessor(Handles h){
+        setHandles(h);
+    }
+    abstract void handleRequest(int num);
+}
+class HandlesFuDaoYuan extends Handles{
+    @Override
+    void handleRequest(int num) {
+        if(num < 3){
+            System.out.println("辅导员审批，同意请假!");
+        }else {
+            if (getHandles() != null)
+              getHandles().handleRequest(num);
+        }
+    }
+}
+class HandlesDaoShi extends Handles{
+    @Override
+    void handleRequest(int num) {
+        if(num < 7){
+            System.out.println("导师审批，同意请假!");
+        }else {
+            if (getHandles() != null)
+              getHandles().handleRequest(num);
+        }
+    }
+}
+class HandlesShuJi extends Handles{
+    @Override
+    void handleRequest(int num) {
+        if(num < 15){
+            System.out.println("书记审批，同意请假!");
+        }else {
+            System.out.println("书记审批，不同意请假!");
+        }
+    }
+}
+```
+### 二十一. 中介者模式
+&#8195;&#8195;该模式用一个中介对象来封装一系列的对象交互。中介者使各对象不需要显式地相互引用，从而使其耦合松散，而且可以独立的改变它们之间的交互。其基本结构如下：
+![中介者模式结构图](DesignPattern/20.png)
+1. 当系统中出现了“多对多”交互复杂的对象群时，应首先烦死是否在系统设计上有不合理的地方，而不是直接使用该模式。
+2. 该模式一般应用于一组对象以定义良好但是复杂的方式进行通信的场合，以及想定制一个分布在多个类中的行为，而又不想生成太多子类的场合。
+3. 在Android开发中的Activity类就承担着中介者的作用，它承担了各个控件之间的联系与操作。
+```java
+//采用中介模式模拟租房的简单逻辑
+public class Solution {
+    public static void main(String[] args) {
+        Mediator mediator = new Mediator();
+        Seller seller = new Seller(mediator);
+        Buyer buyer = new Buyer(mediator);
+        mediator.setBuyer(buyer);
+        mediator.setSeller(seller);
+        buyer.sendMessage("希望可以获得一些优惠");
+        seller.sendMessage("没问题，但是要至少租6个月");
+
+    }
+}
+class Mediator{
+    private Seller seller;
+    private Buyer buyer;
+
+    public Seller getSeller() {
+        return seller;
+    }
+
+    public void setSeller(Seller seller) {
+        this.seller = seller;
+    }
+
+    public Buyer getBuyer() {
+        return buyer;
+    }
+
+    public void setBuyer(Buyer buyer) {
+        this.buyer = buyer;
+    }
+    public void SendMessage(String m,User user){
+        if (user == seller){
+            buyer.getMessage(m);
+        }
+        if (user == buyer){
+            seller.getMessage(m);
+        }
+    }
+}
+abstract class User{
+    private Mediator mediator;
+
+    public Mediator getMediator() {
+        return mediator;
+    }
+
+    public User(Mediator mediator) {
+        this.mediator = mediator;
+    }
+    public abstract void sendMessage(String m);
+    public abstract void getMessage(String m);
+}
+class Seller extends User{
+    public Seller(Mediator mediator) {
+        super(mediator);
+    }
+
+    @Override
+    public void sendMessage(String m) {
+        getMediator().SendMessage(m,this);
+    }
+
+    @Override
+    public void getMessage(String m) {
+        System.out.println("卖家收到对方消息："+m);
+    }
+}
+class Buyer extends User{
+    public Buyer(Mediator mediator) {
+        super(mediator);
+    }
+
+    @Override
+    public void sendMessage(String m) {
+        getMediator().SendMessage(m,this);
+    }
+
+    @Override
+    public void getMessage(String m) {
+        System.out.println("买家收到对方消息："+m);
+    }
+}
+```
+### 二十二.享元模式
+&#8195;&#8195;该模式运用共享技术有效地支持大量细粒度的对象。其基本结构如下：
+![享元模式结构图](DesignPattern/21.png)
+1. 享元模式可以避免大量相似类的开销，在程序设计中，有时候需要生成大量细粒度地类实例来表示数据。如果发现这些实例除了几个参数外基本都是相同的，可以将那些参数移到类实例外面，在方法调用的时候再传递进来，这样就能通过共享大幅度减少单个实例的数目。即协调内部和外部状态，在共享的同时，体现它们的不同。
+2. 如果一个应用程序使用了大量的对象，而大量的对象造成了很大的存储开销时，就应考虑使用；还有就是对象的大多数状态可以表示外部状态，如果单独提取出对象中的外部状态，那么可以用相对较少的共享对象取代很多对象，此时可以考虑使用共享模式。
+3. String的实现方式就是一种享元模式。再如棋盘上的棋子，若每个棋子都生成新的对象，将会产生极大的开销，因此可用享元模式设计。
+4. 运用享元模式需要维护一个记录了系统已有的所有享元的列表，这需要耗费资源，且该模式使系统更加复杂。因此应该在有足够多的对象实例可供共享时使用。
+```java
+import java.util.HashMap;
+
+//采用享元模式模拟在棋盘上下围棋的逻辑
+public class Solution {
+    public static void main(String[] args) {
+        ChessFactory chessFactory = new ChessFactory();
+        Chess chess1 = chessFactory.getChess("白子");
+        Chess chess2 = chessFactory.getChess("黑子");
+        chess2.Draw(new Locate(2,3));
+        chess1.Draw(new Locate(2,4));
+        chess2.Draw(new Locate(3,4));
+    }
+}
+class Chess{
+    private String name;
+
+    public Chess(String name) {
+        this.name = name;
+    }
+    public void Draw(Locate l){
+        System.out.println("在坐标("+l.getX()+","+l.getY()+")处落下"+name);
+    }
+}
+//作为棋子的外部状态类
+class Locate {
+    private int x;
+    private int y;
+
+    public int getX() {
+        return x;
+    }
+
+    public int getY() {
+        return y;
+    }
+
+    public Locate(int x, int y) {
+        this.x = x;
+        this.y = y;
+    }
+}
+class ChessFactory{
+    private HashMap<String,Chess> chess = new HashMap<>();
+    public Chess getChess(String name){
+        if (!chess.containsKey(name)){
+            chess.put(name,new Chess(name));
+        }
+        return chess.get(name);
+    }
+}
+```
+### 二十三. 解释器模式
+&#8195;&#8195;该模式对于某一给定的语言，定义它的文法的一种表示，并定义一个解释器，这个解释器使用该表示来解释语言中的句子。其基本结构如下：
+![解释器模式结构图](DesignPattern/22.png)
+1. 如果一种特定类型的问题发生的频率足够高，那么可能就值得将该问题的各个实例表述为一个简单语言中的句子。这样就可以构建一个解释器，该解释器通过解释这些句子来解决该问题。如使用正则表达式识别字符串。
+2. 当有一个语言需要解释执行，并且你可以将该语言中的句子表示为一个抽象语法树时，可使用解释器模式。
+3. 使用解释器模式意味着可以很容易地改变和扩展文法，因为该模式使用类来表示文法规则。可以使用继承来改变或者扩展文法。也比较容易实现文法，因为定义抽象语法树中各个节点的类的实现大体类似。这些类都易于直接编写。
+4. 当文法非常复杂时，应使用其他技术如语法分析程序或者编译器生成器来处理
+ 
+### 二十四.访问者模式
+&#8195;&#8195;该模式表示一个作用于对象结构中各个元素的操作，它可以在不改变各元素的类的前提下，定义作用于这些元素的新操作。即可以在不在相应的类中增加新方法的情况下，为其增加新的操作。其基本结构如下：
+![访问者模式结构图](DesignPattern/23.png)
+1. 采用双分派技术使实际执行的操作请求决定于请求的种类和两个接收者的类型。
+2. 该模式使用的前提是元素的结构相对稳定的系统，即不会或较少会出现元素数目的改动。它把数据结构和作用于结构山的操作直接的耦合解脱开，使得操作集合可以相对自由地演化。因此，其适用于数据结构稳定但算法操作易变的情况。
+
+
+end at the page 323
