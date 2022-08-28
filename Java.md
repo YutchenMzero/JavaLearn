@@ -1,6 +1,9 @@
-### JAVA基本知识
-* `StringBuilder`和`StringBuffer`可灵活扩展与更改，避免了`String`每次’更改’都会创建新对象的问题，其中`StringBuffer`线程安全，方法接口被`synchronized `修饰。
+### JAVA基本知识 
 
+* `StringBuilder`和`StringBuffer`可灵活扩展与更改，避免了`String`每次’更改’都会创建新对象的问题，其中`StringBuffer`线程安全，方法接口被`synchronized `修饰。
+### 开发软件
+1. idea插件Translation,用来阅读源码。
+   
 ### 1. List、Map与Set
 ![类图](Javauml/setlistandmap.png)
 #### List
@@ -14,6 +17,7 @@
 #### Map
 * 以键值对的形式存储。
 * 键不可重复，值可重复，允许存NULL。
+
 ### 2. equals()与==   
 1. `==`针对基本数据类型时，比较的是值是否相同，引用数据类型时是比较引用地址是否相同。
 2. `equals()`属于Object中的方法，所有类都可重写该方法，但基本数据类型不可使用。
@@ -167,3 +171,22 @@ public boolean equals(Object obj) {
 ### 13. 动态代理
 &#8195;&#8195;动态代理中所说的“动态”，是针对使用Java代码实际编写了代理类的“静态”代理而言的，它的优势不在于省去了编写代理类那一点编码工作量，而是实现了可以在原始类和接口还未知的时候，就确定代理类的代理行为，当代理类与原始类脱离直接联系后，就可以很灵活地重用于不同的应用场景之中
 ### 14. 反射技术
+
+### 15. stack和deque
+#### Stack
+&#8195;&#8195;继承自Vector，而Vector是线程安全的。其底层实现是数组，目前已经不被推荐，建议使用Deque来替代栈。
+#### Queue
+&#8195;&#8195;是一个继承自Collection的接口，由于LinkedList实现了该接口，因此可利用LinkedList来构建队列。
+#### Deque
+&#8195;&#8195;Deque是一个双端队列接口，继承自Queue接口。其原理为双端队列。
+#### PriorityQueue
+&#8195;&#8195;是一个基于优先级堆实现的队列，默认其头部为最小值，不允许插入null和不可比较的元素。可通过构造函数设置所用的Comparator。如`Queue<Integer> p = new PriorityQueue<>(Collections.reverseOrder());`设置逆优先级。
+* 构造comparator：
+```java
+    （Object o1,Object o2)-> o2-o1;//降序
+    （Object o1,Object o2)-> o1-o2;//升序
+```
+#### ArrayDeque
+* ArrayDeque是 Deque接口的一个实现，使用了可变数组，所以没有容量上的限制。同时ArrayDeque是线程不安全的，在没有外部同步的情况下，不能在多线程环境下使用。
+* ArrayDeque是 Deque的实现类，可以作为栈来使用，效率高于 Stack；也可以作为队列来使用，效率高于 LinkedList。
+
