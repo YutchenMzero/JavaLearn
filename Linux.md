@@ -36,6 +36,7 @@ markdown [教程](https://blog.csdn.net/u014061630/article/details/81359144);
    * 只显示监听端口`-l`
    * 显示网络统计信息`-s`
    * 显示tcp`-t`或udp`-u`网络
+   * 查找指定端口 `netstat -alnp | grep <端口>`
 <font size=1>\**详细内容参考`man netstat`*</font>
 
 #### 环境变量配制

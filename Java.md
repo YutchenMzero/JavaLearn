@@ -179,14 +179,17 @@ public boolean equals(Object obj) {
 &#8195;&#8195;是一个继承自Collection的接口，由于LinkedList实现了该接口，因此可利用LinkedList来构建队列。
 #### Deque
 &#8195;&#8195;Deque是一个双端队列接口，继承自Queue接口。其原理为双端队列。
+* offer()默认在队尾，peek()和poll()默认在队首
+* push()和pop()在队首
 #### PriorityQueue
 &#8195;&#8195;是一个基于优先级堆实现的队列，默认其头部为最小值，不允许插入null和不可比较的元素。可通过构造函数设置所用的Comparator。如`Queue<Integer> p = new PriorityQueue<>(Collections.reverseOrder());`设置逆优先级。
 * 构造comparator：
 ```java
-    （Object o1,Object o2)-> o2-o1;//降序
-    （Object o1,Object o2)-> o1-o2;//升序
+    （o1, o2)-> o2-o1;//降序
+    （o1, o2)-> o1-o2;//升序
 ```
 #### ArrayDeque
 * ArrayDeque是 Deque接口的一个实现，使用了可变数组，所以没有容量上的限制。同时ArrayDeque是线程不安全的，在没有外部同步的情况下，不能在多线程环境下使用。
 * ArrayDeque是 Deque的实现类，可以作为栈来使用，效率高于 Stack；也可以作为队列来使用，效率高于 LinkedList。
+* 不支持插入null类型。
 
