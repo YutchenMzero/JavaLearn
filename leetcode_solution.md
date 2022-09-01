@@ -43,7 +43,7 @@ void backtrack(int t){
         for(int i = 0;i <= 1;i++){
             x[t] = i;
             if(constraint(t) && bound(t)){
-                backtrack(t+1);
+                backtrack(t+1);//回溯过程隐含在参量传递中，即值的变化直接传给了下一层而不是其本身。
             }
         }//该部分的循环并不是必须的
     }
@@ -110,6 +110,7 @@ void backtrack(int t){
             queue.offer(entry);
         }
     ```
+10. 完全二叉树可通过判断其左右遍历深度是否一致，确定其是不是满二叉树
 ### 例题
 #### 中心扩散法求解最长回文串：
 ```java
