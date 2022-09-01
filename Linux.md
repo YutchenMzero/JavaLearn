@@ -70,5 +70,3 @@ fi
 #### 配制vpn
 1. 没有L2TP协议,通过`sudo apt-get install network-manager-l2tp-gnome`下载，并重启后即可
 
-#### github相关问题
-1. 遭遇如`Failed to connect to github.com port 443`的问题，若使用vpn得话，可使用`git config --global http.proxy <ip:socket>`配置git的代理，`<ip:socket>`应与所用的代理一致
