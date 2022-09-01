@@ -1,7 +1,7 @@
 ## Maven
 [官方下载地址](https://maven.apache.org/)
 * 安装与配置后输入`mvn-v`测试是否成功。并在其目录下conf文件中的`settings.xml`修改镜像地址。
-```  
+``` xml
 <mirrors>
    <mirror>
        <id>nexus-aliyun</id>
