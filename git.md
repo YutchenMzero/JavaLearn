@@ -41,3 +41,6 @@
 2. 切换分支`git checkout <branch_name>`(当你切换分支的时候，Git 会重置你的工作目录，使其看起来像回到了你在那个分支上最后一次提交的样子。 Git 会自动添加、删除、修改文件以确保此时你的工作目录和这个分支最后一次提交时的样子一模一样)
 3. 创建并切换分支`git checkout -b <branch_name  >`
 4. 合并分支到当前分支`git merge <branch_name>`
+
+#### github相关问题
+1. 遭遇如`Failed to connect to github.com port 443`的问题，若使用vpn得话，可使用`git config --global http.proxy <ip:socket>`配置git的代理，`<ip:socket>`应与所用的代理一致
