@@ -5,8 +5,8 @@
 ### 9月
 #### 1
 ##### plan
-1. 更新clash配制文件
-2. 完成论文的CoverLetter（上午）
+1. 更新clash配制文件  --done
+2. 完成论文的CoverLetter（上午） --done
 3. 梳理参考项目的架构，开始学习源码
 4. LeetCode (2h)
 5. Java八股或JVM笔记
