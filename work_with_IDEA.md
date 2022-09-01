@@ -106,7 +106,7 @@
 ## Tomcat
 [官方下载地址](https://tomcat.apache.org/)
 * 安装与环境配制后，运行`<tomcat所在路径>/bin/startup.sh`,并访问`http://localhost:8080`，验证是否正确安装与配置
-#### Idea中的Tomcat配制
+### Idea中的Tomcat配制
 * war模式：将WEB工程以包的形式上传到服务器 ；最终打包部署到Tomcat所在位置。
 * war exploded模式：将WEB工程以当前文件夹的位置关系上传到服务器；最终打包部署到项目target所在位置。
 * 在`HTTP port`中设置端口号
@@ -120,3 +120,8 @@
 ## SpringBoot
 * 使用IDEA构建Spring boot+maven项目：新建项目时选择`Spring Initializr`,并将`Type`选项选为`Maven`。并在依赖中勾选`Spring Web`
 * 若在`pom.xml`中`<artifactId>spring-boot-maven-plugin</artifactId>`变为红色，仅需为其增加版本号即可，注意要与所用`spring boot`版本一致。
+### 基本知识
+#### Spring,Spring MVC,Spring Boot的关系
+* Spring是一款开源的轻量级 Java 开发框架，包含多个功能模块，最重要的是`Spring-Core`（主要提供 IoC 依赖注入功能的支持）模块。
+* Spring MVC是Spring中的一个很重要的模块，主要赋予 Spring 快速构建 MVC 架构的 Web 程序的能力。MVC指模型(Model)、视图(View)、控制器(Controller)的简写，其核心思想是通过将业务逻辑、数据、显示分离来组织代码。
+* Spring Boot是简化配制版本的Spring。
