@@ -11,6 +11,10 @@
 1. 在**工作目录**中修改文件。
 2. 暂存文件，将文件的快照放入**暂存区域**。
 3. 提交更新，找到暂存区域的文件，将快照永久性存储到**Git仓库**目录。
+#### HEAD
+HEAD 是一个对当前检出记录的符号引用,也就是指向你正在其基础上进行工作的提交记录。它总是指向当前分支上最近一次提交记录且通常情况下是指向分支名的。大多数修改提交树的 Git 命令都是从改变 HEAD 的指向开始的。
+1. 分离的HEAD：即让其指向了某个具体的提交记录而不是分支名。可用checkout命令指定提交记录的哈希值实现
+2. 相对引用：通过`^`（向上移动一个提交记录）和 `~<num>`（向上移动多个提交记录）快速定义到所需引用的位置。可以将分支名或者HEAD作为相对引用的参考位置。
 
 ### 常用命令与操作
 #### 获取git仓库
@@ -31,7 +35,9 @@
 #### 撤销操作
 1. 撤销上一次提交，并重新提交`git commit --amend`
 2. 取消暂存的文件`git reset <filename>`
-3. 撤消对文件的修改（暂存区恢复到工作区）:`git checkout -- <filename>`
+3. 回退提交记录到指定位置`git reset <commit_location>`(reset命令对远程分支无效)
+4. 撤销更改并分享（新建一个提交，该提交与要撤回到的提交状态相同）`git revert <commit_location>`
+5. 撤消对文件的修改（暂存区恢复到工作区）:`git checkout -- <filename>`
 #### 拉取到本地
 1. 将远程的branch分支的最新版本取到本地的origin/branch分支里，不会合并到本地的branch分支`git fetch origin <branch>`(即拉取到本地仓库，但不到工作区)
 2. 将远程的branch分支的最新版本取到本地的origin/branch分支里，同时合并到本地的branch分支`git pull origin <branch>`
@@ -41,6 +47,13 @@
 2. 切换分支`git checkout <branch_name>`(当你切换分支的时候，Git 会重置你的工作目录，使其看起来像回到了你在那个分支上最后一次提交的样子。 Git 会自动添加、删除、修改文件以确保此时你的工作目录和这个分支最后一次提交时的样子一模一样)
 3. 创建并切换分支`git checkout -b <branch_name  >`
 4. 合并分支到当前分支`git merge <branch_name>`
+5. 将并行分支合并为线性分支`git rebase <branch_name>`
+6. 强制修改分支的位置`git branch -f <branch_name> <commit_location>`,是分支指向另一个提交。
+#### HEAD操作
+1. 查看HEAD指向`cat .git/HEAD`,如果 HEAD 指向的是一个引用，还可以用`git symbolic-ref HEAD`查看它的指向.
+#### 整理提交记录
+1. 将一些提交复制到HEAD下面`git cherry-pick <commit_location>`
+2. 使用`git rebase <commit_location> -i`整理所设定提交位置之后的所有提交
 
 #### github相关问题
 1. 遭遇如`Failed to connect to github.com port 443`的问题，若使用vpn得话，可使用`git config --global http.proxy <ip:socket>`配置git的代理，`<ip:socket>`应与所用的代理一致
