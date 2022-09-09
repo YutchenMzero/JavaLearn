@@ -70,3 +70,11 @@ fi
 #### 配制vpn
 1. 没有L2TP协议,通过`sudo apt-get install network-manager-l2tp-gnome`下载，并重启后即可
 
+#### 防火墙配制
+1. 查看防火墙状态`sudo ufw status`,也可以看到开放的端口
+2. 关闭防火墙`sudo ufw disable`，打开防火墙`sudo ufw enable`,
+3. 防火墙开放端口`sudo ufw allow <socket>` ,关闭端口`sudo ufw deny <socket>`
+4. 重启防火墙`sudo ufw reload`
+#### 端口配制（iptables在最底层，一般都使用ufw）
+1. 开启指定端口 `iptables -I INPUT -p tcp --dport 8080 -j ACCEPT`,但是服务器重启就会失效
+2. 持续化规则，安装`iptables-persistent`,执行`netfilter-persistent save`，`netfilter-persistent reload`

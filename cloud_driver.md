@@ -233,3 +233,192 @@ OGNL 表达式中创建一个变量并将其绑定到上下文
 #### MD5
 1. MD5是一种摘要算法，加密后为128位，按16进制编码后，为32个字符。
 2. 虽然md5本身是不可逆的,但是因为其唯一性,会遭到遍历破解,所以一般使用md5的时候还会进行加盐操作,即在md5运算结果上再加入自己的加密算法,例如这里为将结果都加上字符串yan,这样就不容易被破解了,加盐的加密算法也可以自己直接封装在工具类中
+```java
+
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
+/**
+ * @Author yutchen
+ * @Date 2022/9/9 上午10:01
+ */
+public class MD5Util {
+    private static final String hexDigits[] = {"0", "1", "2", "3", "4", "5",
+            "6", "7", "8", "9", "a", "b", "c", "d", "e", "f"};
+    /*
+     * @Author yutchen
+     * @Description //实现加盐的MD5加密，其中盐为字符串本身
+     * @Date 下午2:53 2022/9/9
+     * @Param [java.lang.String]
+     * @return java.lang.String
+     **/
+    public static String getMD5WithSalt(String s){
+        String temp = getMD5(s);
+        return getMD5(temp+s);
+    }
+    /*
+     * @Author yutchen
+     * @Description //对输入进行MD5加密，并返回加密后的字符串
+     * @Date 下午2:50 2022/9/9
+     * @Param [java.lang.String]
+     * @return java.lang.String
+     **/
+    private static String getMD5(String s){
+        String output = null;
+        try {
+            //获取MD5算法实例
+            MessageDigest digest = MessageDigest.getInstance("MD5");
+            //传入要处理的字节数据
+            digest.update(s.getBytes());
+            //进行数据加密，并返回加密后的字节数组
+            byte[] b = digest.digest();
+            output = byteArray2HexString(b);
+        }catch (NoSuchAlgorithmException e){
+            e.printStackTrace();
+        }
+        return output;
+    }
+    /*
+     * @Author yutchen
+     * @Description 将byte[]数组转化为16进制的字符串
+     * @Date 上午10:49 2022/9/9
+     * @Param [byte[]]
+     * @return java.lang.String
+     **/
+    private static String byteArray2HexString(byte[] bytes){
+        int len = bytes.length;
+        StringBuilder result = new StringBuilder();
+        for (int i = 0; i < len; i++) {
+            byte byte0 = bytes[i];
+            //利用无符号右移分别截取当前字节的前、后4位，并转为16进制
+            result.append(hexDigits[byte0 >>> 4 & 0xf]);
+            result.append(hexDigits[byte0 & 0xf]);
+        }
+        return result.toString();
+    }
+
+}
+```
+或者使用`org.apache.commons.codec.digest.DigestUtils`包中的方法：
+```java
+DigestUtils.md5Hex(str);
+```
+#### 利用邮件服务器发送验证
+1. 引入邮箱任务依赖
+```xml
+		<dependency>
+			<groupId>org.springframework.boot</groupId>
+			<artifactId>spring-boot-starter-mail</artifactId>
+		</dependency>
+```
+2. 在yml文件中增加邮箱配制
+```yaml
+mail:
+    username: 邮箱名
+    password: 授权码
+    # 邮箱服务器的host
+    host: smtp.qq.com
+    port: 465
+    properties:
+      mail:
+        smtp:
+          auth: true
+          starttls:
+            enable: true
+            required: true
+          socketFactory:
+          #使用SMTPS协议465端口
+            port: 465
+            class: javax.net.ssl.SSLSocketFactory
+            fallback: false
+```
+3. 邮件服务
+spring为发送邮件提供了一个抽象层: 定义了MailMessage 和 MailSender抽象 来描述邮件消息和邮件发送者
+`MailMessage`: 有两个实现类: `SimpleMainMessage`(text格式) 和 `MimeMailMessage`(多用途)
+`setTo(String to)` 发送地址，可以设置多个
+`setFrom(String from)` 发送方
+`setCc(String c)` 抄送
+`SetSubject(String subject)` 主题
+`setText(String text) `邮件内容
+`MimeMessageHelper`: 简化对mimeMessage的封装
+
+```java
+public class MailUtils {
+
+
+    //邮件发送器
+    private JavaMailSenderImpl mailSender;
+    private final String emailFrom = "";
+    Logger logger = LogUtils.getLogger(MailUtils.class);
+
+    public MailUtils(JavaMailSenderImpl mailSender) {
+        this.mailSender = mailSender;
+    }
+
+
+    /**
+     * @param title       邮件标题
+     * @param text        邮件内容
+     * @param acceptEmail 接收方邮件
+     * @return void
+     * @Author yutchen
+     * @Description 发送纯文本邮件
+     * @Date 下午3:55 2022/9/9
+     **/
+    public void sendSimpleMailMessage(String title, String text, String acceptEmail) {
+        logger.info("开始发送简单邮件...");
+        logger.info("mailSender对象为:" + mailSender);
+        SimpleMailMessage message = new SimpleMailMessage();
+        message.setSubject(title);
+        message.setText(text);
+        message.setFrom(emailFrom);
+        message.setTo(acceptEmail);
+        System.out.println(mailSender);
+        logger.info("message对象为:" + message);
+        mailSender.send(message);
+    }
+
+    /**
+     * @param email    目标邮箱
+     * @param userName 注册用户名
+     * @param date     注册时间
+     * @return java.lang.String
+     * @Author yutchen
+     * @Description //发送验证码（发送复杂邮件，包含Html标签）
+     * @Date 下午4:04 2022/9/9
+     **/
+
+    public String sendCode(String email, String userName, Date date) {
+        int code = (int) ((Math.random() * 9 + 1) * 100000);
+        logger.info("开始发送复杂邮件...");
+        logger.info("mailSender对象为:" + mailSender);
+        MimeMessage mimeMessage = mailSender.createMimeMessage();
+        MimeMessageHelper helper = new MimeMessageHelper(mimeMessage);
+        try {
+            helper.setSubject("网盘-邮箱验证");
+            helper.setText("<h2 >内部网盘，仅用于科研资料传输</h2>" +
+                    "<h3>用户注册-邮箱验证<h3/>" +
+                    "您现在正在注册账号<br>" +
+                    "验证码: <span style='color : red'>" + code + "</span><br>" +
+                    "用户名 :" + userName +
+                    "<br>" + date +
+                    "<hr>" +
+                    "<h5 style='color : red'>如果并非本人操作,请忽略本邮件</h5>", true);
+            helper.setFrom(emailFrom);
+            helper.setTo(email);
+            // 添加资源文件
+            // FileSystemResource resource = new FileSystemResource("文件路径")；
+            // 以内嵌的方式添加文件
+            // helper.addInline("id1",resource);
+            // 以附件的方式增加文件
+            // helper.addAttachment("tiger.jpeg",resource);
+
+        } catch (MessagingException e) {
+            e.printStackTrace();
+        }
+        logger.info("mimeMessage对象为:" + mimeMessage);
+        mailSender.send(mimeMessage);
+        return String.valueOf(code);
+    }
+}
+
+```
