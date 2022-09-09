@@ -1,33 +1,3 @@
-## 项目设计
-### 需求分析
-#### 需求获取
-1. 学生用户应当可以注册并登录系统，可以从系统上下载所需要的文件
-2. 管理员账号应当可以管理系统中不同文件夹得访问权限，仅仅让拥有权限的人下载文件
-3. 管理员应当可以审核用户的注册请求，仅能让内部人员访问该系统
-4. 考虑到数据的特性，系统的传输应当能支持5g大小的文件传输
-5. 对于文档、表格、图片等文件，并不是一定要下载下来，应当支持在线预览
-6. 用户可以上传并管理自己上传的文件
-7. 管理员可以查看存储端剩余存储空间，以及用户的敏感操作历史，主要是文件的上传与删除
-8. 学生用户可以将自己上传的文件的从属权转让给管理员用户，便于统一管理
-9. 用户可以选择自己上传的文件，其他用户包括管理员是否有操作权限（包括查看，删除，下载等）
-
-#### 功能性需求
-##### 用户基本功能
-1. 注册
-2. 登录
-##### 文件操作
-1. 文件上传（支持大文件）
-2. 文件下载
-3. 文件管理（移动，重命名，删除，更改权限）
-##### 仓库管理
-1. 查看剩余存储空间
-##### 管理员（用户管理）功能
-1. 设置用户存取权限
-2. 查看操作日志？
-
-
-
-## 项目实现
 ### FTP服务器
 #### 软件安装
 1. 安装vsftp软件`sudo apt-get install vsftpd`
@@ -74,6 +44,155 @@ pasv_max_port=45000
 
 ### Mybatis
 #### 使用MyBatis Generator自动生成
+#### resultMap和resultType
+两者都是表示查询结果集与java对象之间的一种关系，处理查询结果集，映射到java对象
+* resultType：直接表示返回类型，一般是bean中的对象类，此时可以省略掉resultMap标签的映射（由MyBatis自动创建并映射），但是必须保证查询结果集中的属性 和 bean对象类中的属性是一一对应的。
+  ```xml
+  <select id="selectUser" parameterType="java.lang.Integer" resultMap="com.yutchen.yunpan.entity.User">
+    select *
+	<!-- 可使用作映射 -->
+	<!-- select user_name as `name` -->
+    from user
+    where user_id = #{user_id,jdbcType=INTEGER}
+  </select>
+  ```
+* resultMap:表示将查询结果集中的列一一映射到bean对象的各个属性。在数据库字段无法与实体类中的属性名对应时使用。此外resultMap可以用在复杂联合查询上，而resultType不可以(比如实体类中包含其他表中的属性)。
+  ```xml
+  <!-- type指明要映射得到结果类型 -->
+  <resultMap id="UserResultMap" type="com.yutchen.yunpan.entity.User">
+	<!-- 主键需要单独映射 -->
+    <id column="user_id" jdbcType="INTEGER" property="user_id" />
+    <result column="file_store_id" jdbcType="INTEGER" property="file_store_id" javaType="java.lang.Integer"/>
+    <result column="email" jdbcType="VARCHAR" property="email" />
+    <result column="user_name" jdbcType="VARCHAR" property="user_name" />
+    <result column="password" jdbcType="VARCHAR" property="password" />
+    <result column="role" jdbcType="INTEGER" property="role" />
+	<!-- 若包含其他类的集合，可使用以下方式 -->
+	<!-- <collection property="fileList" resultMap="FileResultMap"></collection> -->
+	<!-- 或者 -->
+	<!-- <collection property="fileList" ofType="com.yutchen.yunpan.entity.File">
+		 <id ...>
+	     <result ...>
+	     </collection> -->
+	<!-- 若包含其他类型的关联（即实体类中的成员包含其他类的实例），可使用以下方式 -->
+	<!-- 或者 -->
+	<!-- <association property="变量名" resultMap="映射名"></association> -->
+	<!-- <association property="变量名" javaType="类型名">
+		<id ...>
+	     <result ...>
+    </association> -->
+  </resultMap>
+  ```
+**常见情况：**
+* 数据库字段名使用形如user_name命名方式，实体属性使用userName驼峰命名方式，开启mapUnderscoreToCamelCase=true后，直接使用resultType即可完成映射。
+* 数据库字段名和实体属性名忽略大小写后串相等，如UserName和userName，可以直接使用resultType完成映射。
+* 数据库字段名和实体属性名串忽略大小写和下划线后串不等，如user_name和name，就需要配置resultMap来完成这种不等值映射。
+#### 动态SQL
+即sql语句可以动态的变化，其本质是有条件的包含`where`子句的一部分，以达到方法重载的效果.原理为使用 OGNL 从 sql 参数对象中计算表达式的值，根据表达式的值动态拼接 sql，以此来完成动态 sql 的功能
+##### if
+主要用于基本的if判断，以下例子将查找user表，若没有传入`userId`,将所有`role=1`的记录返回，否则将返回指定id的`role=1`的记录。
+```xml
+<select id="selectUser" resultType="UserResultMap">
+select * from user
+where role = 1
+<!-- 在test属性中设置判断条件 -->
+<if test="userId!=null">
+and user_id = #{userId}
+</if>
+```
+##### when、choose、otherwise
+主要用于实现类似`switch`语句的逻辑
+```xml
+<select id="selectUser" resultType="UserResultMap">
+select * from user
+where role = 1
+<choose>
+    <when test="userId!=null">
+      and user_id = #{userId}
+    </when>
+    <when test="email != null">
+      and email like #{email}
+    </when>
+    <otherwise>
+      and file_stroe_id = 1
+    </otherwise>
+  </choose>
+```
+##### where
+`where` 元素会在只有一个以上的if条件有值的情况下才去插入"WHERE"子句。而且，若最后的内容是"AND"或"OR"开头的，`where`元素也会将他们去除。
+##### set
+用于编写动态的更新语句,`set`元素可以用于去动态包含需要更新的列，而舍去其他的未输入的属性。
+```xml
+<update id="updateByPrimaryKeySelective" parameterType="com.yutchen.yunpan.entity.User">
+    update user
+    <set>
+      <if test="file_store_id != null">
+        file_store_id = #{file_store_id,jdbcType=INTEGER},
+      </if>
+      <if test="email != null">
+        email = #{email,jdbcType=VARCHAR},
+      </if>
+      <if test="user_name != null">
+        user_name = #{user_name,jdbcType=VARCHAR},
+      </if>
+      <if test="password != null">
+        password = #{password,jdbcType=VARCHAR},
+      </if>
+      <if test="role != null">
+        role = #{role,jdbcType=INTEGER},
+      </if>
+    </set>
+    where user_id = #{user_id,jdbcType=INTEGER}
+  </update>
+```
+##### trim
+`trim`标记是一个格式化的标记，可以完成set或者是where标记的功能
+1. 删除前后缀中命中的词`prefixoverride`；`suffixoverride`
+2. 在删除操作结束后（不一定要执行），增加前后缀 `prefix`；`suffix`
+##### foreach
+1. 对一个集合进行遍历，通常是在构建 IN 条件语句的时候，如
+```xml
+<select id="selectPostIn" resultType="domain.blog.Post">
+  SELECT *
+  FROM POST P
+  WHERE ID in
+  <foreach item="item" index="index" collection="list"
+      open="(" separator="," close=")">
+        #{item}
+  </foreach>
+  <!-- 即等同于以下形式 -->
+  <!-- SELECT *
+  FROM POST P
+  WHERE ID in（paramter1，paramter2，...，paramtern） 
+  -->
+</select>
+```
+2. 可以将任何可迭代对象（如 List、Set 等）、Map 对象或者数组对象作为集合参数传递给 foreach。当使用可迭代对象或者数组时，index 是当前迭代的序号，item 的值是本次迭代获取到的元素。当使用 Map 对象（或者 Map.Entry 对象的集合）时，index 是键，item 是值。collection指明要遍历的集合；open属性是起始拼接的值，separator是中间需要分割的值，close是结束拼接时的值。
+3. collection属性指定
+   * 若入参为单参数且参数类型是一个List的时候，collection属性值为list。
+   * 若入参为单参数且参数类型是一个数组的时候，collection属性值为array（此处传入参数Integer[] rolelds为数组类型，故此处collection属性值设为“array”）。
+   * 若传入参数为多参数，就需要把他们封装为一个Map进行处理，collection属性值为要遍历的集合的属性。
+##### sql,include
+用于定义并将sql语句中的重复部分抽取出来成为一个公用的部分，并使用`include`调用如
+```xml
+<sql id="selectall">
+    select  *  from  user
+</sql>
+<select id="selectUser" resultType="UserResultMap">
+<include refid="selectall">
+<select>
+```
+##### bind
+OGNL 表达式中创建一个变量并将其绑定到上下文
+```xml
+<select id="selectBlogsLike" resultType="Blog">
+<!-- _parameter表示传入的参数 -->
+  <bind name="pattern" value="'%' + _parameter.getTitle() + '%'" />
+  SELECT * FROM BLOG
+  WHERE title LIKE #{pattern}
+</select>
+```
+
 #### 相关配制
 1. pom.xml部分
 ```xml
