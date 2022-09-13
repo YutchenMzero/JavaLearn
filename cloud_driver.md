@@ -30,6 +30,301 @@ pasv_max_port=45000
 ```
 3. 创建并编辑 chroot_list 文件,输入用户名，一个用户名占据一行,完成后重启ftp服务
 
+#### FTP工具类
+```java
+public class FTPUtil {
+
+    //FTP服务器IP地址
+    private static final String HOST = "172.23.53.53";
+    //FTP服务器端口
+    private static final int PORT = 21;
+    //FTP登录账号
+    private static final String USERNAME = "ftpuser";
+    // FTP登录密码
+    private static final String PASSWORD = "ftpuser123456";
+    // ftp目录
+    private static final String BASEPATH = "/var/ftp";
+    //FTP客户端
+    private static FTPClient ftp;
+
+    /**
+     * @Author yutchen
+     * @Description 初始化FTP客户端
+     * @Date 上午9:58 2022/9/11
+     * @param
+     * @return boolean
+     **/
+    public static boolean initFtpClient(){
+        ftp = new FTPClient();
+        int reply;
+        try {
+            // 连接FTP服务器
+            ftp.connect(HOST, PORT);
+            //登录, 如果采用默认端口，可以使用ftp.connect(host)的方式直接连接FTP服务器
+            ftp.login(USERNAME, PASSWORD);
+            //设置本地缓冲大小
+            ftp.setBufferSize(100*1024);
+            //设置传输超时时间
+            ftp.setDataTimeout(600*1000);
+            //连接超时时间
+            ftp.setConnectTimeout(20*1000);
+            //FTP以二进制形式传输
+            ftp.setFileType(FTP.BINARY_FILE_TYPE);
+            reply = ftp.getReplyCode();//获取响应码，所有2**形式的都是主动完成响应，服务器在命令最终完成时会发出该形式的码
+            if (!FTPReply.isPositiveCompletion(reply)) {
+                ftp.disconnect();
+                return false;
+            }
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+        return true;
+    }
+
+
+    /**
+     * @Author yutchen
+     * @Date 下午10:25 2022/9/11
+     * Description: 向FTP服务器上传文件
+     * @param filePath FTP服务器文件存放路径。文件的路径为basePath+filePath
+     * @param filename 上传到FTP服务器上的文件名
+     * @param input 本地要上传的文件的 输入流
+     * @return 成功返回true，否则返回false
+     */
+    public static boolean uploadFile(String filePath, String filename, InputStream input) {
+        boolean result = false;
+        try {
+            //由于将GBK转换为iso8859-1编码,根据服务器编码切换
+//            filePath = new String(filePath.getBytes("GBK"),"iso-8859-1");
+//            filename = new String(filename.getBytes("GBK"),"iso-8859-1");
+            if (!initFtpClient()){
+                return result;
+            };
+            //切换被动模式
+            ftp.enterLocalPassiveMode();
+            //切换工作目录
+            if (!ftp.changeWorkingDirectory(BASEPATH+filePath)) {
+                //如果目录不存在创建目录
+                //split()方法，如果表达式与输入的任何部分都不匹配，则结果数组只有一个元素，即这个字符串
+                String[] dirs = filePath.split("/");
+                String tempPath = BASEPATH;
+                //去除空路径
+                for (String dir : dirs) {
+                    if (null == dir || "".equals(dir)){
+                        continue;
+                    }
+                    tempPath += "/" + dir;
+                    if (!ftp.changeWorkingDirectory(tempPath)) {
+                        //创建新路径，可使用相对路径或绝对路径
+                        if (!ftp.makeDirectory(tempPath)) {
+                            return result;
+                        } else {
+                            ftp.changeWorkingDirectory(tempPath);
+                        }
+                    }
+                }
+            }
+            //保证传输时为被动模式
+            ftp.enterLocalPassiveMode();
+            ftp.setFileType(FTP.BINARY_FILE_TYPE);
+            //上传文件
+            if (!ftp.storeFile(filename, input)) {
+                return result;
+            }
+            input.close();
+            ftp.logout();
+            result = true;
+        }
+        catch (IOException e) {
+            e.printStackTrace();
+        } finally {
+            if (ftp.isConnected()) {
+                try {
+                    ftp.disconnect();
+                } catch (IOException ioe) {
+                }
+            }
+        }
+        return result;
+    }
+
+    /**
+     * Description: 从FTP服务器下载文件
+     * @param remotePath FTP服务器上的相对路径
+     * @param fileName 要下载的文件名
+     * @return
+     */
+    public static boolean downloadFile( String remotePath,String fileName,String localPath) {
+        boolean result = false;
+
+        try {
+
+            if (!initFtpClient()){
+                return result;
+            };
+            // 转移到FTP服务器目录
+            ftp.changeWorkingDirectory(remotePath);
+            ftp.enterLocalPassiveMode();
+            FTPFile[] fs = ftp.listFiles();
+            for (FTPFile ff : fs) {
+                if (ff.getName().equals(fileName)) {
+                    ftp.enterLocalPassiveMode();
+                    FileOutputStream outputStream = new FileOutputStream(new File(localPath));
+                    //从服务器检索命名文件并将其写入给定的 OutputStream,可用 setRestartOffset(long)设定文件起始偏移
+                    result = ftp.retrieveFile(remotePath+"/"+fileName,outputStream);
+                    outputStream.close();
+                }
+            }
+            ftp.logout();
+        } catch (IOException e) {
+            e.printStackTrace();
+        } finally {
+            if (ftp.isConnected()) {
+                try {
+                    ftp.disconnect();
+                } catch (IOException ioe) {
+                }
+            }
+        }
+        return result;
+    }
+
+    /**
+     * @Author yutchen
+     * @Description 从ftp服务器下载文件到指定输出流
+     * @Date 下午3:43 2022/9/13
+     * @param remotePath FTP服务器上的相对路径
+     * @param fileName 要下载的文件名   
+     * @param outputStream 文件输出流               
+     * @return boolean
+     **/
+    public static boolean downloadFile(String remotePath, String fileName, OutputStream outputStream) {
+        boolean result = false;
+        try {
+
+            if (!initFtpClient()){
+                return result;
+            };
+            // 转移到FTP服务器目录
+            ftp.changeWorkingDirectory(remotePath);
+            ftp.enterLocalPassiveMode();
+            FTPFile[] fs = ftp.listFiles();
+            for (FTPFile ff : fs) {
+                if (ff.getName().equals(fileName)) {
+                    ftp.enterLocalPassiveMode();
+                    result = ftp.retrieveFile(remotePath+"/"+fileName,outputStream);
+                }
+            }
+            ftp.logout();
+        } catch (IOException e) {
+            e.printStackTrace();
+        } finally {
+            if (ftp.isConnected()) {
+                try {
+                    ftp.disconnect();
+                } catch (IOException ioe) {
+                }
+            }
+        }
+        return result;
+    }
+
+    /**
+     * @Description 删除文件
+     **/
+    public static boolean deleteFile( String remotePath,String fileName){
+        boolean result = false;
+        try {
+
+            if (!initFtpClient()){
+                return result;
+            };
+            if ("".equals(fileName)){
+                return result;
+            }
+            // 转移到FTP服务器目录
+            ftp.changeWorkingDirectory(remotePath);
+            ftp.enterLocalPassiveMode();
+            FTPFile[] fs = ftp.listFiles();
+            for (FTPFile ff : fs) {
+                if (ff.getName().equals(fileName)){
+                    String filePath = remotePath + "/" +fileName;
+                    //删除文件
+                    result = ftp.deleteFile(filePath);
+                    
+                }
+            }
+            ftp.logout();
+        } catch (IOException e) {
+            e.printStackTrace();
+        } finally {
+            if (ftp.isConnected()) {
+                try {
+                    ftp.disconnect();
+                } catch (IOException ioe) {
+                }
+            }
+        }
+        return result;
+    }
+
+    /**
+     * @Description 删除文件夹
+     **/
+    public static boolean deleteFolder( String remotePath){
+        boolean result = false;
+        try {
+            remotePath = new String(remotePath.getBytes("GBK"),"iso-8859-1");
+            if (!initFtpClient()){
+                return result;
+            };
+            // 转移到FTP服务器目录
+            ftp.changeWorkingDirectory(remotePath);
+            ftp.enterLocalPassiveMode();
+            FTPFile[] fs = ftp.listFiles();
+            if (fs.length==0){
+                result = ftp.removeDirectory(remotePath);
+            }
+            ftp.logout();
+        } catch (IOException e) {
+            e.printStackTrace();
+        } finally {
+            if (ftp.isConnected()) {
+                try {
+                    ftp.disconnect();
+                } catch (IOException ioe) {
+                }
+            }
+        }
+        return result;
+    }
+
+    /**
+     * @Description 修改文件名称或者文件夹名
+     **/
+    public static boolean reNameFile( String oldAllName,String newAllName){
+        boolean result = false;
+        try {
+            if (!initFtpClient()){
+                return result;
+            };
+            ftp.enterLocalPassiveMode();
+            result = ftp.rename(oldAllName,newAllName);
+            ftp.logout();
+        } catch (IOException e) {
+            e.printStackTrace();
+        } finally {
+            if (ftp.isConnected()) {
+                try {
+                    ftp.disconnect();
+                } catch (IOException ioe) {
+                }
+            }
+        }
+        return result;
+    }
+}
+```
  
 #### 注意事项
 1. vsftpd 默认开启匿名访问模式，无需通过用户名和密码即可登录 FTP 服务器。使用此方式登录 FTP 服务器的用户没有权修改或上传文件的权限
