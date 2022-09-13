@@ -229,6 +229,9 @@ OGNL 表达式中创建一个变量并将其绑定到上下文
    * 首先要在 <jdbcConnection> 中的 connectionURL 中指定数据库的实例名，
    * 然后在 <jdbcConnection> 中添加相关配置信息，即 <property name="nullCatalogMeansCurrent" value="true"/>，即可保证只生成自己需要的 User 类。
 
+#### docker
+##### 使用docker部署
+
 ### 其他
 #### MD5
 1. MD5是一种摘要算法，加密后为128位，按16进制编码后，为32个字符。
@@ -388,6 +391,7 @@ public class MailUtils {
      **/
 
     public String sendCode(String email, String userName, Date date) {
+      //生成验证码,Math.random()方法将返回一个0.0-1.0之间的数，取自均匀分布
         int code = (int) ((Math.random() * 9 + 1) * 100000);
         logger.info("开始发送复杂邮件...");
         logger.info("mailSender对象为:" + mailSender);
@@ -422,3 +426,24 @@ public class MailUtils {
 }
 
 ```
+#### 负载均衡
+即尽力将网络流量平均分发到多个服务器上，以提高系统整体的响应速度和可用性。
+##### 基础知识
+1. 软件负载均衡的主流产品有：Nginx、HAProxy、LVS。
+   * LVS 可以作为四层负载均衡器。其负载均衡的性能要优于 Nginx。
+   * HAProxy 可以作为 HTTP 和 TCP 负载均衡器。
+   * Nginx、HAProxy 可以作为四层或七层负载均衡器。
+2. 网络通信分类
+  * 七层负载均衡：就是可以根据访问用户的 HTTP 请求头、URL 信息将请求转发到特定的主机。
+  * 四层负载均衡：基于 IP 地址和端口进行请求的转发。
+3.  DNS 负载均衡：大型网站一般使用 DNS 负载均衡作为 第一级负载均衡手段，然后在内部使用其它方式做第二级负载均衡。DNS 负载均衡属于七层负载均衡。工作原理就是：基于 DNS 查询缓存，按照负载情况返回不同服务器的 IP 地址。
+   ![DNS 负载均衡示意图](cloud_driver_res/1.png)
+4.  HTTP 负载均衡：基于 HTTP 重定向实现，即根据用户的 HTTP 请求计算出一个真实的服务器地址，将该服务器地址写入 HTTP 重定向响应中，返回给浏览器，由浏览器重新进行访问。
+   ![HTTP 负载均衡](cloud_driver_res/2.png)
+5.  反向代理负载均衡：以代理服务器来接受网络请求，然后将请求转发给内网中的服务器，并将从内网中的服务器上得到的结果返回给网络请求的客户端。
+   ![反向代理负载均衡](cloud_driver_res/3.png)
+6.  IP负载均衡：在网络层通过修改请求目的地址进行负载均衡。
+   ![IP负载均衡](cloud_driver_res/4.png)
+7. 数据链路层负载均衡：在通信协议的数据链路层修改 mac 地址进行负载均衡。如Linux上的LVS(Linux Virtual Server)
+   ![数据链路层负载均衡](cloud_driver_res/5.png)
+##### 负载均衡算法
