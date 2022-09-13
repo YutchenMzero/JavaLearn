@@ -10,7 +10,7 @@
 ```sh
 anonymous_enable=NO
 local_enable=YES
-chroot_local_user=YES #是否限制用户离开限定的根目录
+chroot_local_user=NO #是否限制用户离开限定的根目录
 chroot_list_enable=YES
 chroot_list_file=/etc/vsftpd.chroot_list
 
@@ -331,6 +331,7 @@ public class FTPUtil {
 2. 若ftp上传出现`FAIL MKDIR`错误，可通过以下流程解决：
    * 切换至ftp用户`su ftpuser`
    * 更改ftp目录权限`sudo chmod -R 777 ftp`
+3. 若FTPClient.changeWorkingDirectory失败，检查是否设置不允许用户离开限定的根目录
 
 
 ### MySQL
