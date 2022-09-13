@@ -1,9 +1,8 @@
 ### JAVA基本知识 
 
 * `StringBuilder`和`StringBuffer`可灵活扩展与更改，避免了`String`每次’更改’都会创建新对象的问题，其中`StringBuffer`线程安全，方法接口被`synchronized `修饰。
-### 开发软件
-1. idea插件Translation,用来阅读源码。
-   
+* 抽象类可以有构造函数，用于封装继承子类公共的东西。
+  
 ### 1. List、Map与Set
 ![类图](Javauml/setlistandmap.png)
 #### List

@@ -464,6 +464,8 @@ YAML 是 JSON 的超集，简洁而强大，专门用来书写配置文件的语
 * `#{}`是 sql 的参数占位符,会返回其属性值。
 
 ## IDEA
+### 插件
+1. 插件Translation,用来阅读源码。
 ### 自定义注释模板
 1. `settings`->`live templates`新增 templates group 和 live template
 2. 编写live template中的template text
