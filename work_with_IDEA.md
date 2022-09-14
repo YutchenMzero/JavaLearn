@@ -440,8 +440,109 @@ ISOLATION_DEFAULT :使用后端数据库默认的隔离级别，MySQL 默认采�
 3. 底层使用的数据库必须支持事务机制，否则不生效；
 
 
+### 常用注解
+#### @SpringBootApplication
+该注解可以看做是以下三个注解的集合：
+* `@EnableAutoConfiguration`：启用 SpringBoot 的自动配置机制
+* `@ComponentScan`： 扫描被注解的 bean，注解默认会扫描该类所在的包下所有的类。
+* `@Configuration`：允许在 Spring 上下文中注册额外的 bean 或导入其他配置类
+#### Bean相关
+1. `@Autowired`:自动导入对象到类中，被注入进的类同样要被 Spring 容器管理比如：Service 类注入到 Controller 类中。
+2. 用于声明为Bean的注解，`@Component`,`@Repository`,`@Service`, `@Controller`
+3. `@RestController`:是`@Controller`和`@ResponseBody`的合集,表示这是个控制器 bean,并且是将函数的返回值直接填入 HTTP 响应体中,是 REST 风格的控制器。
+   * `@Controller` +`@ResponseBody` 返回 JSON 或 XML 形式数据
+   * `@Controller`一般是用在要返回一个视图的情况,对应前后端不分离的情况，目前很少使用。
+4. `@Scope`:声明 Spring Bean 的作用域.
+5. `@Configuration`:一般用来声明配置类，可以使用 `@Component`注解替代，不过使用`@Configuration`注解声明配置类更加语义化。
+#### HTTP请求相关
+常见的请求类型为：
+|请求类型| 说明|
+|:---    |:---:|
+|GET    |请求从服务器获取特定资源。举个例子：GET /users（获取所有学生）|
+|POST   |在服务器上创建一个新的资源。举个例子：POST /users（创建学生）|
+|PUT    |更新服务器上的资源（客户端提供更新后的整个资源）。举个例子：PUT /users/12（更新编号为 12 的学生）|
+|DELETE |从服务器删除特定的资源。举个例子：DELETE /users/12（删除编号为 12 的学生）|
+|PATCH  |更新服务器上的资源（客户端提供更改的属性，可以看做作是部分更新），使用的比较少。|
+1. get: @GetMapping("users") 等价于@RequestMapping(value="/users",method=RequestMethod.GET)
+2. post:@PostMapping("users") 等价于@RequestMapping(value="/users",method=RequestMethod.POST)
+3. put: @PutMapping("/users/{userId}") 等价于@RequestMapping(value="/users/{userId}",method=RequestMethod.PUT)
+4. delete:@DeleteMapping("/users/{userId}")等价于@RequestMapping(value="/users/{userId}",method=RequestMethod.DELETE)
+5. patch: 一般实际项目中，我们都是 PUT 不够用了之后才用 PATCH 请求去更新数据。
+#### 前后端传值
+1. `@PathVariable`:用于获取url路径上的参数,即使用`/`传数据。可以通过设置reqired属性来调节是否必须传
+2. `@RequestParam`:用于获取查询参数，即使用`?`传数据。前端必须有对应的名字。可以通过设置reqired属性来调节是否必须传
+3. `@RequestBody`:用于读取 Request 请求的 body 部分并且Content-Type 为 application/json 格式的数据，接收到数据之后会自动将数据绑定到 Java 对象上去。系统会使用HttpMessageConverter或者自定义的HttpMessageConverter将请求的 body 中的 json 字符串转换为 java 对象，也可以用String类型接受，然后自己解析。
+   * 需要注意的是：一个请求方法只可以有一个@RequestBody，但是可以有多个@RequestParam和@PathVariable。 如果你的方法必须要用两个 @RequestBody来接受数据的话，大概率是数据库设计或者系统设计出问题了。
+#### 读取配置信息
+从配置文件中读取信息注入到对应属性中。
+1. `@Value`:使用 @Value("${property}") 读取比较简单的配置信息。
+2. `@ConfigurationProperties(prefix = )`:读取配置信息并与 bean 绑定。最适用于所有具有相同前缀的分层属性。默认情况下，Spring Boot 会忽略那些不能绑定到 @ConfigurationProperties 类字段的属性
+3. `@PropertySource`:读取指定 properties 文件
+#### 参数校验
+JSR(Java Specification Requests） 是一套 JavaBean 参数校验的标准，它定义了很多常用的校验注解。 其时Hibernate Validator 框架的参考实现。
+1. 常用的字段验证注解：
+   
+|注解名|说明|
+|---|---|
+| @NotEmpty | 被注释的字符串的不能为 null 也不能为空|
+|@NotBlank |被注释的字符串非 null，并且必须包含一个非空白字符|
+|@Null |被注释的元素必须为 null|
+|@NotNull| 被注释的元素必须不为 null|
+|@AssertTrue |被注释的元素必须为 true|
+|@AssertFalse |被注释的元素必须为 false|
+|@Pattern(regex=,flag=)|被注释的元素必须符合指定的正则表达式|
+|@Email |被注释的元素必须是 Email 格式。|
+|@Min(value)|被注释的元素必须是一个数字，其值必须大于等于指定的最小值，值为long类型|
+|@Max(value)|被注释的元素必须是一个数字，其值必须小于等于指定的最大值|
+|@DecimalMin(value)|被注释的元素必须是一个数字，其值必须大于等于指定的最小值，值为String类型|
+|@DecimalMax(value) |被注释的元素必须是一个数字，其值必须小于等于指定的最大值|
+|@Size(max=, min=)|被注释的元素的大小必须在指定的范围内|
+|@Digits(integer, fraction)|被注释的元素必须是一个数字，其值必须在可接受的范围内|
+|@Past|被注释的元素必须是一个过去的日期|
+|@Future |被注释的元素必须是一个将来的日期|
+2. 验证请求体,`@Valid`如果验证失败，它将抛出MethodArgumentNotValidException，默认情况下，Spring会将此异常转换为HTTP Status 400（错误请求）。。其合法性由Java对象内部的参数校验注解确定。
+3. 验证请求参数，在类上使用`@Validated` ，这个参数可以告诉 Spring 去校验方法参数。如：
+```java
+@RestController
+@RequestMapping("/api")
+@Validated
+public class PersonController {
 
+    @GetMapping("/person/{id}")
+    public ResponseEntity<Integer> getPersonByID(@Valid @PathVariable("id") @Max(value = 5,message = "超过 id 的范围了") Integer id) {
+        return ResponseEntity.ok().body(id);
+    }
+}
+```
+#### 全局处理 Controller 层异常
+1. `@ControllerAdvice` :注解定义全局异常处理类
+2. `@ExceptionHandler` :注解声明异常处理方法
+```java
+@ControllerAdvice
+@ResponseBody
+public class GlobalExceptionHandler {
 
+    /**
+     * 请求参数异常处理
+     */
+    @ExceptionHandler(MethodArgumentNotValidException.class)
+    public ResponseEntity<?> handleMethodArgumentNotValidException(MethodArgumentNotValidException ex, HttpServletRequest request) {
+       ......
+    }
+}
+```
+#### JPA相关
+#### json数据处理
+1. 过滤json数据
+   * `@JsonIgnoreProperties`在类上用于过滤掉特定字段不返回或者不解析。
+   * `@JsonIgnore`一般用于类的属性上，作用和上面的`@JsonIgnoreProperties`一样。
+2. `@JsonFormat`一般用来格式化 json 数据。`@JsonFormat(shape=JsonFormat.Shape.STRING, pattern="yyyy-MM-dd'T'HH:mm:ss.SSS'Z'", timezone="GMT")`
+3. `@JsonUnwrapped`：扁平化对象
+#### 测试相关
+1. `@ActiveProfiles`一般作用于测试类上， 用于声明生效的 Spring 配置文件。
+2. `@Test`声明一个方法为测试方法
+3. `@Transactional`被声明的测试方法的数据会回滚，避免污染测试数据。
+4. `@WithMockUser` Spring Security 提供的，用来模拟一个真实用户，并且可以赋予权限。
 ### Spring yaml配置
 YAML 是 JSON 的超集，简洁而强大，专门用来书写配置文件的语言，可以替代 *.properties.它利用缩进来表示层级关系，并且大小写敏感。
 #### 与*.properties文件的区别
