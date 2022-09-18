@@ -210,3 +210,83 @@ lambda表达式是java8中引入的特性，允许通过表达式来代替功能
 * 即可以访问到外层定义的变量
 * 捕获的变量在运行过程中不能发生改变(IDEA中会提醒变量应当声明为final或相对final)
 * lambda的变量捕获与匿名内部类要求一致
+
+### 并发编程
+#### 指令重排序
+简单来说就是系统在执行代码的时候并不一定是按照你写的代码的顺序依次执行。，一般分为两种情况：
+* 编译器优化重排 ：编译器（包括 JVM、JIT 编译器等）在不改变单线程程序语义的前提下，重新安排语句的执行顺序。
+* 指令并行重排 ：现代处理器采用了指令级并行技术(Instruction-Level Parallelism，ILP)来将多条指令重叠执行。如果不存在数据依赖性，处理器可以改变语句对应机器指令的执行顺序。
+Java 源代码会经历 编译器优化重排 —> 指令并行重排 —> 内存系统重排 的过程，最终才变成操作系统可执行的指令序列。指令重排序可以保证串行语义一致，但是没有义务保证多线程间的语义也一致
+#### Java内存模型
+原因：
+   * Java 语言是跨平台的，它需要自己提供一套内存模型以屏蔽系统差异。
+   * 简化多线程编程，增强程序可移植性的
+##### 主内存与本地内存
+* 主内存 ：所有线程创建的实例对象都存放在主内存中，不管该实例对象是成员变量还是方法中的本地变量(也称局部变量)
+* 本地内存 ：每个线程都有一个私有的本地内存来存储共享变量的副本，并且，每个线程只能访问自己的本地内存，无法访问其他线程的本地内存。本地内存是 JMM 抽象出来的一个概念，存储了主内存中的共享变量副本。
+##### 八种同步操作
+* 锁定（lock）: 作用于主内存中的变量，将他标记为一个线程独享变量。
+* 解锁（unlock）: 作用于主内存中的变量，解除变量的锁定状态，被解除锁定状态的变量才能被其他线程锁定。
+* read（读取）：作用于主内存的变量，它把一个变量的值从主内存传输到线程的工作内存中，以便随后的 load 动作使用。
+* load(载入)：把 read 操作从主内存中得到的变量值放入工作内存的变量的副本中。
+* use(使用)：把工作内存中的一个变量的值传给执行引擎，每当虚拟机遇到一个使用到变量的指令时都会使用该指令。
+* assign（赋值）：作用于工作内存的变量，它把一个从执行引擎接收到的值赋给工作内存的变量，每当虚拟机遇到一个给变量赋值的字节码指令时执行这个操作。
+* store（存储）：作用于工作内存的变量，它把工作内存中一个变量的值传送到主内存中，以便随后的 write 操作使用。
+* write（写入）：作用于主内存的变量，它把 store 操作从工作内存中得到的变量的值放入主内存的变量中。
+##### happens-before 原则
+1. 定义：
+   * 如果一个操作 happens-before 另一个操作，那么第一个操作的执行结果将对第二个操作可见，并且第一个操作的执行顺序排在第二个操作之前。
+   * 两个操作之间存在 happens-before 关系，并不意味着 Java 平台的具体实现必须要按照 happens-before 关系指定的顺序来执行。如果重排序之后的执行结果，与按 happens-before 关系来执行的结果一致，那么 JMM 也允许这样的重排序
+2. 其表达的意义是前一个操作的结果对于后一个操作是可见的，无论这两个操作是否在同一个线程里。
+3. 常用规则：
+   * 程序顺序规则 ：一个线程内，按照代码顺序，书写在前面的操作 happens-before 于书写在后面的操作；
+   * 解锁规则 ：解锁 happens-before 于加锁；
+   * volatile 变量规则 ：对一个 volatile 变量的写操作 happens-before 于后面对这个 volatile 变量的读操作。说白了就是对 volatile 变量的写操作的结果对于发生于其后的任何操作都是可见的。
+   * 传递规则 ：如果 A happens-before B，且 B happens-before C，那么 A happens-before C；
+   * 线程启动规则 ：Thread 对象的 start（）方法 happens-before 于此线程的每一个动作。
+#### 线程池
+* 降低资源消耗。通过重复利用已创建的线程降低线程创建和销毁造成的消耗。
+* 提高响应速度。当任务到达时，任务可以不需要等到线程创建就能立即执行。
+* 提高线程的可管理性。线程是稀缺资源，如果无限制的创建，不仅会消耗系统资源，还会降低系统的稳定性，使用线程池可以进行统一的分配，调优和监控
+#####  Executor 框架
+1. 框架结构
+   * 任务(Runnable /Callable)：执行任务需要实现的 Runnable 接口 或 Callable接口。Runnable 接口或 Callable 接口 实现类都可以被 ThreadPoolExecutor 或 ScheduledThreadPoolExecutor 执行。
+   * 任务的执行(Executor)
+   * 异步计算的结果(Future)：Future 接口以及 Future 接口的实现类 FutureTask 类都可以代表异步计算的结果。
+2. 使用示意图
+![Executor 框架使用示意图](res/Java_res/1.jpg)
+   * 主线程首先要创建实现 Runnable 或者 Callable 接口的任务对象。
+   * 把创建完成的实现 Runnable/Callable接口的 对象直接交给 ExecutorService 执行: ExecutorService.execute（Runnable command））或者也可以把 Runnable 对象或Callable 对象提交给 ExecutorService 执行（ExecutorService.submit（Runnable task）或 ExecutorService.submit（Callable <T> task））。
+   * 如果执行 ExecutorService.submit（…），ExecutorService 将返回一个实现Future接口的对象（我们刚刚也提到过了执行 execute()方法和 submit()方法的区别，submit()会返回一个 FutureTask 对象）。由于 FutureTask 实现了 Runnable，我们也可以创建 FutureTask，然后直接交给 ExecutorService 执行。
+   * 最后，主线程可以执行 FutureTask.get()方法来等待任务执行完成。主线程也可以执行 FutureTask.cancel（boolean mayInterruptIfRunning）来取消此任务的执行
+3. ThreadPoolExecutor 类
+   * 构造函数：
+```java
+  /**
+     * 用给定的初始参数创建一个新的ThreadPoolExecutor。
+     */
+    public ThreadPoolExecutor(int corePoolSize,//线程池的核心线程数量,定义了最小可以同时运行的线程数量。
+                              int maximumPoolSize,//线程池的最大线程数
+                              long keepAliveTime,//当线程数大于核心线程数时，多余的空闲线程存活的最长时间
+                              TimeUnit unit,//时间单位
+                              BlockingQueue<Runnable> workQueue,//任务队列，用来储存等待执行任务的队列
+                              ThreadFactory threadFactory,//线程工厂，用来创建线程，一般默认即可
+                              RejectedExecutionHandler handler//拒绝策略，当提交的任务过多而不能及时处理时，我们可以定制策略来处理任务
+                               ) {
+        if (corePoolSize < 0 ||
+            maximumPoolSize <= 0 ||
+            maximumPoolSize < corePoolSize ||
+            keepAliveTime < 0)
+            throw new IllegalArgumentException();
+        if (workQueue == null || threadFactory == null || handler == null)
+            throw new NullPointerException();
+        this.corePoolSize = corePoolSize;
+        this.maximumPoolSize = maximumPoolSize;
+        this.workQueue = workQueue;
+        this.keepAliveTime = unit.toNanos(keepAliveTime);
+        this.threadFactory = threadFactory;
+        this.handler = handler;
+    }
+```
+#### 其他
+1. this逃逸问题
