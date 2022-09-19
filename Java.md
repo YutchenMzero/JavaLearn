@@ -248,6 +248,8 @@ Java 源代码会经历 编译器优化重排 —> 指令并行重排 —> 内�
 * 降低资源消耗。通过重复利用已创建的线程降低线程创建和销毁造成的消耗。
 * 提高响应速度。当任务到达时，任务可以不需要等到线程创建就能立即执行。
 * 提高线程的可管理性。线程是稀缺资源，如果无限制的创建，不仅会消耗系统资源，还会降低系统的稳定性，使用线程池可以进行统一的分配，调优和监控
+##### 使用场景
+一般用于执行多个不相关联的耗时任务，没有多线程的情况下，任务顺序执行，使用了线程池的话可让多个不相关联的任务同时执行。
 #####  Executor 框架
 1. 框架结构
    * 任务(Runnable /Callable)：执行任务需要实现的 Runnable 接口 或 Callable接口。Runnable 接口或 Callable 接口 实现类都可以被 ThreadPoolExecutor 或 ScheduledThreadPoolExecutor 执行。
@@ -265,8 +267,8 @@ Java 源代码会经历 编译器优化重排 —> 指令并行重排 —> 内�
   /**
      * 用给定的初始参数创建一个新的ThreadPoolExecutor。
      */
-    public ThreadPoolExecutor(int corePoolSize,//线程池的核心线程数量,保留在池中的线程数。
-                              int maximumPoolSize,//线程池的最大线程数
+    public ThreadPoolExecutor(int corePoolSize,//线程池的核心线程数量,需要保留在池中的线程数。
+                              int maximumPoolSize,//线程池的最大线程数，当任务数大于核心线程数+队列容量时，会被非核心线程执行。
                               long keepAliveTime,//当线程数大于核心线程数时，多余的空闲线程存活的最长时间。当线程池中的线程数量大于 corePoolSize 的时候，如果这时没有新的任务提交，核心线程外的线程不会立即销毁，而是会等待，直到等待的时间超过了 keepAliveTime才会被回收销毁；
                               TimeUnit unit,//时间单位
                               BlockingQueue<Runnable> workQueue,//任务队列，用来储存等待执行任务的队列，当新任务来的时候会先判断当前运行的线程数量是否达到核心线程数，如果达到的话，新任务就会被存放在队列中
@@ -368,10 +370,54 @@ Java 源代码会经历 编译器优化重排 —> 指令并行重排 —> 内�
 1. CPU 密集型任务---利用 CPU 计算能力的任务(N+1)： 这种任务消耗的主要是 CPU 资源，可以将线程数设置为 N（CPU 核心数）+1，比 CPU 核心数多出来的一个线程是为了防止线程偶发的缺页中断，或者其它原因导致的任务暂停而带来的影响。一旦任务暂停，CPU 就会处于空闲状态，而在这种情况下多出来的一个线程就可以充分利用 CPU 的空闲时间。
 2. I/O 密集型任务---涉及到网络读取，文件读取(2N)： 这种任务应用起来，系统会用大部分的时间来处理 I/O 交互，而线程在处理 I/O 的时间段内不会占用 CPU 来处理，这时就可以将 CPU 交出给其它线程使用。因此在 I/O 密集型任务的应用中，我们可以多配置一些线程，具体的计算方法是 2N。
 
+##### 动态线程池设定
+利用setCorePoolSize()和setMaximumPoolSize()更改核心线程数和最大线程数，重写BlockingQueue，取消其capacity的final修饰，实现阻塞队列的动态修改。
+##### 关闭线程池
+```java
+    executor.shutdown();
+    executor.awaitTerminayion(60,TimeUnit.SECONDS);
+    executor.shutdownnow();
+```
+#### AQS
+AQS 的全称为 AbstractQueuedSynchronizer ，翻译过来的意思就是抽象队列同步器，这个类在 java.util.concurrent.locks 包下面。主要用来构建锁和同步器。
+
 #### 其他
 1. this逃逸问题
 2. 线程资源必须通过线程池提供，不允许在应用中自行显式创建线程。使用线程池的好处是减少在创建和销毁线程上所消耗的时间以及系统资源开销，解决资源不足的问题。如果不使用线程池，有可能会造成系统创建大量同类线程而导致消耗完内存或者“过度切换”的问题。
 3. 《阿里开发手册》强制线程池不允许使用 Executors 去创建，而是通过 ThreadPoolExecutor 构造函数的方式
 4. 实现runnable没有返回值，而实现callable接口的任务线程能返回执行结果
 5. callable接口实现类中的run方法允许异常向上抛出，可以在内部处理，try catch，但是runnable接口实现类中run方法的异常必须在内部处理，不能抛出
+6. 建议不同的业务用不同的线程池,否则可能会出现死锁
+7. 建议为每个线程池显式命名，以便定位问题。
+   * 自己实现 ThreadFactor
+```java
+import java.util.concurrent.Executors;
+import java.util.concurrent.ThreadFactory;
+import java.util.concurrent.atomic.AtomicInteger;
+/**
+ * 线程工厂，它设置线程名称，有利于我们定位问题。
+ */
+public final class NamingThreadFactory implements ThreadFactory {
 
+    private final AtomicInteger threadNum = new AtomicInteger();
+    private final ThreadFactory delegate;
+    private final String name;
+
+    /**
+     * 创建一个带名字的线程池生产工厂
+     */
+    public NamingThreadFactory(ThreadFactory delegate, String name) {
+        this.delegate = delegate;
+        this.name = name; // TODO consider uniquifying this
+    }
+
+    @Override
+    public Thread newThread(Runnable r) {
+        Thread t = delegate.newThread(r);
+        t.setName(name + " [#" + threadNum.incrementAndGet() + "]");
+        return t;
+    }
+
+}
+```
+   * spring也为我们提供了自定义线程池的工具类：CustomizableThreadFactory。 
