@@ -380,6 +380,281 @@ Java 源代码会经历 编译器优化重排 —> 指令并行重排 —> 内�
 ```
 #### AQS
 AQS 的全称为 AbstractQueuedSynchronizer ，翻译过来的意思就是抽象队列同步器，这个类在 java.util.concurrent.locks 包下面。主要用来构建锁和同步器。
+##### 原理
+* 如果被请求的共享资源空闲，则将当前请求资源的线程设置为有效的工作线程，并且将共享资源设置为锁定状态。如果被请求的共享资源被占用，那么就需要一套线程阻塞等待以及被唤醒时锁分配的机制，这个机制 AQS 是用 CLH 队列锁实现的，即将暂时获取不到锁的线程加入到队列中。
+* AQS 使用一个 int 成员变量（被volatile 修饰）来表示同步状态，通过内置的 FIFO 队列来完成获取资源线程的排队工作。AQS 使用 CAS 对该同步状态进行原子操作实现对其值的修改。状态信息通过 protected 类型的getState()，setState()，compareAndSetState() 进行操作
+##### 资源共享方式
+1. 独占式：只有一个线程能执行，如 ReentrantLock。又可分为公平锁和非公平锁，ReentrantLock 同时支持两种锁，下面以 ReentrantLock 对这两种锁的定义做介绍：
+```java
+/** Synchronizer providing all implementation mechanics */
+private final Sync sync;
+public ReentrantLock() {
+    // 默认非公平锁
+    sync = new NonfairSync();
+}
+public ReentrantLock(boolean fair) {
+    sync = fair ? new FairSync() : new NonfairSync();
+}
+```
+   * 公平锁 ：按照线程在队列中的排队顺序，先到者先拿到锁
+```java
+static final class FairSync extends Sync {
+    final void lock() {
+        acquire(1);
+    }
+    // AbstractQueuedSynchronizer.acquire(int arg)
+    public final void acquire(int arg) {
+        if (!tryAcquire(arg) &&
+            acquireQueued(addWaiter(Node.EXCLUSIVE), arg))
+            selfInterrupt();
+    }
+    protected final boolean tryAcquire(int acquires) {
+        final Thread current = Thread.currentThread();
+        int c = getState();
+        if (c == 0) {
+            // 1. 和非公平锁相比，这里多了一个判断：是否有线程在等待
+            if (!hasQueuedPredecessors() &&
+                compareAndSetState(0, acquires)) {
+                setExclusiveOwnerThread(current);
+                return true;
+            }
+        }
+        else if (current == getExclusiveOwnerThread()) {
+            int nextc = c + acquires;
+            if (nextc < 0)
+                throw new Error("Maximum lock count exceeded");
+            setState(nextc);
+            return true;
+        }
+        return false;
+    }
+}
+```
+   * 非公平锁（默认） ：当线程要获取锁时，先通过两次 CAS 操作去抢锁，如果没抢到，当前线程再加入到队列中等待唤醒。
+```java
+static final class NonfairSync extends Sync {
+    final void lock() {
+        // 2. 和公平锁相比，这里会直接先进行一次CAS，成功就返回了
+        if (compareAndSetState(0, 1))
+            setExclusiveOwnerThread(Thread.currentThread());
+        else
+            acquire(1);
+    }
+    // AbstractQueuedSynchronizer.acquire(int arg)
+    public final void acquire(int arg) {
+        if (!tryAcquire(arg) &&
+            acquireQueued(addWaiter(Node.EXCLUSIVE), arg))
+            selfInterrupt();
+    }
+    protected final boolean tryAcquire(int acquires) {
+        return nonfairTryAcquire(acquires);
+    }
+}
+/**
+ * Performs non-fair tryLock.  tryAcquire is implemented in
+ * subclasses, but both need nonfair try for trylock method.
+ */
+final boolean nonfairTryAcquire(int acquires) {
+    final Thread current = Thread.currentThread();
+    int c = getState();
+    if (c == 0) {
+        // 这里没有对阻塞队列进行判断
+        if (compareAndSetState(0, acquires)) {
+            setExclusiveOwnerThread(current);
+            return true;
+        }
+    }
+    else if (current == getExclusiveOwnerThread()) {
+        int nextc = c + acquires;
+        if (nextc < 0) // overflow
+            throw new Error("Maximum lock count exceeded");
+        setState(nextc);
+        return true;
+    }
+    return false;
+}
+```
+对比源码可以发现：
+* 非公平锁在调用 lock 后，首先就会调用 CAS 进行一次抢锁，如果这个时候恰巧锁没有被占用，那么直接就获取到锁返回了。
+* 非公平锁在 CAS 失败后，和公平锁一样都会进入到 tryAcquire 方法，在 tryAcquire 方法中，如果发现锁这个时候被释放了（state == 0），非公平锁会直接 CAS 抢锁，但是公平锁会判断等待队列是否有线程处于等待状态，如果有则不去抢锁，乖乖排到后面。
+总体上说非公平锁会有更好的性能，因为它的吞吐量比较大。当然，非公平锁让获取锁的时间变得更加不确定，可能会导致在阻塞队列中的线程长期处于饥饿状态。
+1. 共享式 ：多个线程可同时执行，如Semaphore、CountDownLatch、 CyclicBarrier、ReadWriteLock
+2. 底层实现：同步器设计基于模板方法模式的，如果需要自定义同步器一般的方式是这样：
+   * 使用者继承 AbstractQueuedSynchronizer 并重写指定的方法。（对于共享资源 state 的获取和释放）
+   * 将 AQS 组合在自定义同步组件的实现中，并调用其模板方法，而这些模板方法会调用使用者重写的方法。
+##### Semaphore（信号量）
+可以指定多个线程同时访问某个资源。提供公平和非公平模式。
+实例代码：
+```java
+public class SemaphoreExample1 {
+  // 请求的数量
+  private static final int threadCount = 550;
+
+  public static void main(String[] args) throws InterruptedException {
+    // 创建一个具有固定线程数量的线程池对象（如果这里线程池的线程数量给太少的话你会发现执行的很慢）
+    ExecutorService threadPool = Executors.newFixedThreadPool(300);
+    // 一次只能允许执行的线程数量。
+    final Semaphore semaphore = new Semaphore(20);
+
+    for (int i = 0; i < threadCount; i++) {
+      final int threadnum = i;
+      threadPool.execute(() -> {// Lambda 表达式的运用
+        try {
+          semaphore.acquire();// 获取一个许可，所以可运行线程数量为20/1=20;当然也可以一次拿取或释放多个去壳
+          test(threadnum);
+          semaphore.release();// 释放一个许可
+        } catch (InterruptedException e) {
+          // TODO Auto-generated catch block
+          e.printStackTrace();
+        }
+
+      });
+    }
+    threadPool.shutdown();
+    System.out.println("finish");
+  }
+
+  public static void test(int threadnum) throws InterruptedException {
+    Thread.sleep(1000);// 模拟请求的耗时操作
+    System.out.println("threadnum:" + threadnum);
+    Thread.sleep(1000);// 模拟请求的耗时操作
+  }
+}
+```
+##### CountDownLatch（倒计时器）
+允许 count 个线程阻塞在一个地方，直至所有线程的任务都执行完毕
+使用示例：
+```java
+
+public class CountDownLatchExample1 {
+  // 请求的数量
+  private static final int threadCount = 550;
+
+  public static void main(String[] args) throws InterruptedException {
+    // 创建一个具有固定线程数量的线程池对象（如果这里线程池的线程数量给太少的话你会发现执行的很慢）
+    ExecutorService threadPool = Executors.newFixedThreadPool(300);
+    final CountDownLatch countDownLatch = new CountDownLatch(threadCount);
+    for (int i = 0; i < threadCount; i++) {
+      final int threadnum = i;
+      threadPool.execute(() -> {// Lambda 表达式的运用
+        try {
+          test(threadnum);
+        } catch (InterruptedException e) {
+          // TODO Auto-generated catch block
+          e.printStackTrace();
+        } finally {
+          countDownLatch.countDown();// 表示一个请求已经被完成
+        }
+
+      });
+    }
+    countDownLatch.await();
+    threadPool.shutdown();
+    System.out.println("finish");
+  }
+
+  public static void test(int threadnum) throws InterruptedException {
+    Thread.sleep(1000);// 模拟请求的耗时操作
+    System.out.println("threadnum:" + threadnum);
+    Thread.sleep(1000);// 模拟请求的耗时操作
+  }
+}
+```
+1. 经典使用场景：
+   * 某一线程在开始运行前等待 n 个线程执行完毕。如启动服务时，主线程需要等待其他组件加载完成。
+   * 实现多个线程开始执行任务的最大并行性。即多个任务再开始执行任务前，首先countdownlatch.await(),当主线程当主线程调用 countDown() 时，计数器变为 0，多个线程同时被唤醒。
+2. 不足：是一次性的，只能在构造函数中对其设置值，当用完毕后，它不能再次被使用。
+##### CyclicBarrier(循环栅栏)
+让一组线程到达一个屏障（也可以叫同步点）时被阻塞，直到最后一个线程到达屏障时，屏障才会开门，所有被屏障拦截的线程才会继续干活。
+使用示例：
+```java
+public class CyclicBarrierExample2 {
+  // 请求的数量
+  private static final int threadCount = 550;
+  // 需要同步的线程数量
+  private static final CyclicBarrier cyclicBarrier = new CyclicBarrier(5);
+
+  public static void main(String[] args) throws InterruptedException {
+    // 创建线程池
+    ExecutorService threadPool = Executors.newFixedThreadPool(10);
+
+    for (int i = 0; i < threadCount; i++) {
+      final int threadNum = i;
+      Thread.sleep(1000);
+      threadPool.execute(() -> {
+        try {
+          test(threadNum);
+        } catch (InterruptedException e) {
+          // TODO Auto-generated catch block
+          e.printStackTrace();
+        } catch (BrokenBarrierException e) {
+          // TODO Auto-generated catch block
+          e.printStackTrace();
+        }
+      });
+    }
+    threadPool.shutdown();
+  }
+
+  public static void test(int threadnum) throws InterruptedException, BrokenBarrierException {
+    System.out.println("threadnum:" + threadnum + "is ready");
+    try {
+      /**等待60秒，保证子线程完全执行结束*/
+      cyclicBarrier.await(60, TimeUnit.SECONDS);
+    } catch (Exception e) {
+      System.out.println("-----CyclicBarrierException------");
+    }
+    System.out.println("threadnum:" + threadnum + "is finish");
+  }
+
+}
+```
+```java
+/**
+ * @Description: 新建 CyclicBarrier 的时候指定一个 Runnable
+ */
+public class CyclicBarrierExample3 {
+  // 请求的数量
+  private static final int threadCount = 550;
+  // 需要同步的线程数量
+  private static final CyclicBarrier cyclicBarrier = new CyclicBarrier(5, () -> {
+    System.out.println("------当线程数达到之后，优先执行------");
+  });
+
+  public static void main(String[] args) throws InterruptedException {
+    // 创建线程池
+    ExecutorService threadPool = Executors.newFixedThreadPool(10);
+
+    for (int i = 0; i < threadCount; i++) {
+      final int threadNum = i;
+      Thread.sleep(1000);
+      threadPool.execute(() -> {
+        try {
+          test(threadNum);
+        } catch (InterruptedException e) {
+          // TODO Auto-generated catch block
+          e.printStackTrace();
+        } catch (BrokenBarrierException e) {
+          // TODO Auto-generated catch block
+          e.printStackTrace();
+        }
+      });
+    }
+    threadPool.shutdown();
+  }
+
+  public static void test(int threadnum) throws InterruptedException, BrokenBarrierException {
+    System.out.println("threadnum:" + threadnum + "is ready");
+    cyclicBarrier.await();
+    System.out.println("threadnum:" + threadnum + "is finish");
+  }
+
+}
+```
+1. 与CountDownLatch的区别：
+   * 通过reset功能，CyclicBarrier可以重复使用
+   * CyclicBarrier 注重于多个线程相互等待，到达同步点，再一起执行。
+   * CountDownLatch 注重于等待其他线程完成某件事。
 
 #### 其他
 1. this逃逸问题
