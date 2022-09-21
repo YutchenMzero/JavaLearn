@@ -655,6 +655,14 @@ public class CyclicBarrierExample3 {
    * 通过reset功能，CyclicBarrier可以重复使用
    * CyclicBarrier 注重于多个线程相互等待，到达同步点，再一起执行。
    * CountDownLatch 注重于等待其他线程完成某件事。
+#### 原子类
+1. 引用类型
+   * AtomicReference：引用类型原子类
+   * AtomicMarkableReference：原子更新带有标记的引用类型。该类将 boolean 标记与引用关联起来，也可以解决使用 CAS 进行原子更新时可能出现的 ABA 问题。
+   * AtomicStampedReference ：原子更新带有版本号的引用类型。该类将整数值与引用关联起来，可用于解决原子的更新数据和数据的版本号，可以解决使用 CAS 进行原子更新时可能出现的 ABA 问题。
+2. CAS ABA问题：线程1获取变量的值为A，线程B获取了该变量，并修改为B，最后又修改回A，此时线程1再次获取变量值仍然为A,CAS成功。
+##### 对象的属性修改类型原子类
+要想原子地更新对象的属性需要两步。第一步，因为对象的属性修改类型原子类都是抽象类，所以每次使用都必须使用静态方法 newUpdater()创建一个更新器，并且需要设置想要更新的类和属性。第二步，更新的对象属性必须使用 public volatile 修饰符。
 
 #### 其他
 1. this逃逸问题
