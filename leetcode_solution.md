@@ -97,11 +97,23 @@ void backtrack(int t){
 3） 求解每一个子问题的最优解
 4） 将局部最优解堆叠成全局最优解
 #### 图
-1. 深度优先遍历：三色标记法
-2. （有向图）广度优先遍历：
+##### 深度优先遍历(dfs)与广度优先遍历(bfs)
+使用三色标记法标记节点状态：未访问，已访问，正在访问(用于判断是否有环)
+##### 存储结构
+1. 邻接矩阵：两个数组存储，一个存放节点，一个存放节点间的边(二维矩阵)
+2. 邻接表：顶点用一维数组存储，每个顶点与其他顶点的连接关系用链表存储在该节点后。
+##### 最小生成树
+1. 在图中依次拿出使得现有生成子图无环的权值最小的边即可
+2. 在图中依次去掉可以成环的权值最大的边即可
+##### 最短路径
+1. dijkstra
+
+2. Floyd
+
 
 #### 并查集
-用于处理一些不相交集合的合并及查询问题（即所谓的并、查）。比如说，我们可以用并查集来判断一个森林中有几棵树、某个节点是否属于某棵树等。其基本操作包括find(),union(),和一个记录其前驱节点的数组parent[]。其基本的定义如下
+用于处理一些不相交集合的合并及查询问题（即所谓的并、查）。比如说，我们可以用并查集来判断一个森林中有几棵树、某个节点是否属于某棵树等。其基本操作包括find(),union(),和一个记录其前驱节点的数组parent[]。一般用于解决判断是否有公共节点
+其基本的定义如下
 1. parent[] 初始化
 ```java
 for(int i = 0;i < nodes.length;i++>){
@@ -126,7 +138,40 @@ public void union(int x,int y){
 ##### 问题与解决
 结构会退化成链（树的高度会变得不可控）。
 优化：
-1. 按秩合并：把简单的树往复杂的树上合并，因此需要维护每个树的大小。  
+1. 按秩合并：把简单的树往复杂的树上合并，因此需要维护每个树的深度。
+```java
+int[] tree_depth;
+
+public void union(int x,int y){
+    int root_x = find(x);
+    int root_y = find(y);
+    if(root_x==root_y) return;
+    if(tree_depth[root_x]>tree_depth[root_y]){
+        parent[root_y] = root_x;
+    }else{
+        parent[root_x] = root_y;
+    }
+    if(tree_depth[root_x]==tree_depth[root_y]){
+        tree_depth[root_x]++;
+    }
+}
+```  
+2. 路径压缩
+```java
+//带路径压缩的查找
+public int find(int x){
+    int root = x;
+    while(parent[root]!=root){
+        root = parent[root];
+    }
+    while(root!=x){
+        int x_temp = parent[x];
+        parent[x] = root;
+        x = x_temp;
+    }
+    return root;
+}
+```
 #### 技巧与注意事项
 1. 在通过循环或迭代中，可以通过设置哨兵值，来简化边界判定条件；遍历寻找最优值（即符合题意的，常常是最大或最小值）时，结果的初值（也可以理解为哨兵）一定要考虑极限输入产生的边界结果，充分考虑不同输入的影响，否则算法会容易产生错误结果[^1] 
     [^1]:详见LeetCode.16的题目与提交记录
@@ -145,6 +190,23 @@ public void union(int x,int y){
         }
     ```
 10. 完全二叉树可通过判断其左右遍历深度是否一致，确定其是不是满二叉树
+11. 例如
+```java
+a[i-1][j]=0;
+a[i+1][j]=0;
+a[i][j-1]=0;
+a[i][j+1]=0;
+```
+可改写为
+```java
+int[] i_change = {-1,1,0,0};
+int[] j_change = {0,0,-1,1};
+for(int k = 0;k<4;k++){
+    a[i+i_change[k]][j+j_change[k]] = 0;
+}
+```
+
+12. 
 ### 例题
 #### 中心扩散法求解最长回文串：
 ```java
