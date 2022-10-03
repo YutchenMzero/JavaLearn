@@ -328,7 +328,7 @@ this part start at page 256
 1. 由于限制了Java虚拟机操作码的长度为一个字节，Class文件格式放弃了编译后代码的操作数长度对齐（除了tableswitch和lookupswitch），这就意味着虚拟机在处理那些超过一个字节的数据时，不得不在运行时从字节中重建出具体数据的结构，譬如要将一个16位长度的无符号整数使用两个无符号字节存储起来（假设将它们命名为byte1和byte2），那它们的值应该是这样：`(byte1 << 8) | byte2`。
 2. 在不考虑异常处理的前提下，Java虚拟即的解释器可以用下面的伪代码作为最基本的执行模型：
    ![解释器执行模型](JVMpic/9.png)
-[字节码详细说明](https://www.jianshu.com/p/571   8ebecff84)
+[字节码详细说明](https://www.jianshu.com/p/5718ebecff84)
 #### a. 字节码与数据类型
 &#8195;&#8195;对于大部分与数据类型相关的字节码指令，它们的操作码助记符中都有特殊的字符来表明专门为哪种数据类型服务：i代表对int类型的数据操作，l代表long，s代表short，b代表byte，c代表char，f代表float，d代表double，a代表reference。但并非每种数据类型和每一种操作都有对应的指令。
 1. 编译器会在编译期或运行期将byte和short类型的数据带符号扩展（Sign-Extend）为相应的int类型数据，将boolean和char类型数据零位扩展（Zero-Extend）为相应的int类型数据。与之类似，在处理boolean、byte、short和char类型的数组时，也会转换为使用对应的int类型的字节码指令来处理。
