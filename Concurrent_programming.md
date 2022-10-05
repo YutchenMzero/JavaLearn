@@ -1,3 +1,13 @@
+### 线程基础知识
+#### 守护线程与用户线程
+1. 守护线程，是指在程序运行时 在后台提供一种通用服务的线程，这种线程并不属于程序中不可或缺的部分。
+2. 用户线程和守护线程几乎一样，唯一的不同之处在于如果用户线程已经全部退出运行，只剩下守护线程存在了,JVM也会退出
+3. 守护线程一般具有较低的优先级，它并非只由JVM内部提供，用户在编写程序时也可以自己设置守护线程：在调用`start()`之前调用`setDaemon(true)`方法。
+4. 典型的例子是GC。
+#### 线程优先级
+可以通过设置线程优先级的方式，来提高线程获得时间片的几率，但是该方法并不被推荐，在笔记的JVM部分中，提到过，由于不同机器上的系统中优先级分布不同，在使用JAVA设置优先级时，可能会出现不同优先级在操作系统层面上映射的优先级相同。
+#### join
+该方法使主线程阻塞，直至该线程运行完毕，其内部使用wait()实现。
 ### 并发编程
 #### 指令重排序
 简单来说就是系统在执行代码的时候并不一定是按照你写的代码的顺序依次执行。，一般分为两种情况：
@@ -162,15 +172,16 @@ Java 源代码会经历 编译器优化重排 —> 指令并行重排 —> 内�
 2. SHUTDOWN：关闭状态，不再接受新提交的任务，但却可以继续处理阻塞队列中已保存的任务。在线程池处于 RUNNING 状态时，调用 shutdown()方法会使线程池进入到该状态。
 3. STOP：不能接受新任务，也不处理队列中的任务，会中断正在处理任务的线程。在线程池处于 RUNNING 或 SHUTDOWN 状态时，调用 shutdownNow() 方法会使线程池进入到该状态。
 4. TIDYING：如果所有的任务都已终止了，workerCount (有效线程数) 为0，线程池进入该状态后会调用 terminated() 方法进入TERMINATED 状态。
-5. TERMINATED：在terminated() 方法执行完后进入该状态，默认terminated()方法中什么也没有做。进入TERMINATED的条件如下：
-
+5. TERMINATED：在terminated() 方法执行完后进入该状态，默认terminated()方法中什么也没有做。
+其值分别为-1~3左移29位，即前三位表示线程池状态，后29位表示线程数量。
+* 其中`CAPACITY=(1<<COUNT_BITS)-1`,即2^29-1。`COUNT_BITS=Integer.size-3`
 
 ##### 动态线程池设定
 利用setCorePoolSize()和setMaximumPoolSize()更改核心线程数和最大线程数，重写BlockingQueue，取消其capacity的final修饰，实现阻塞队列的动态修改。
 ##### 关闭线程池
 ```java
     executor.shutdown();
-    executor.awaitTerminayion(60,TimeUnit.SECONDS);
+    executor.awaitTermination(60,TimeUnit.SECONDS);
     executor.shutdownnow();
 ```
 #### AQS
@@ -273,8 +284,8 @@ final boolean nonfairTryAcquire(int acquires) {
 * 非公平锁在调用 lock 后，首先就会调用 CAS 进行一次抢锁，如果这个时候恰巧锁没有被占用，那么直接就获取到锁返回了。
 * 非公平锁在 CAS 失败后，和公平锁一样都会进入到 tryAcquire 方法，在 tryAcquire 方法中，如果发现锁这个时候被释放了（state == 0），非公平锁会直接 CAS 抢锁，但是公平锁会判断等待队列是否有线程处于等待状态，如果有则不去抢锁，乖乖排到后面。
 总体上说非公平锁会有更好的性能，因为它的吞吐量比较大。当然，非公平锁让获取锁的时间变得更加不确定，可能会导致在阻塞队列中的线程长期处于饥饿状态。
-1. 共享式 ：多个线程可同时执行，如Semaphore、CountDownLatch、 CyclicBarrier、ReadWriteLock
-2. 底层实现：同步器设计基于模板方法模式的，如果需要自定义同步器一般的方式是这样：
+2. 共享式 ：多个线程可同时执行，如Semaphore、CountDownLatch、 CyclicBarrier、ReadWriteLock
+3. 底层实现：同步器设计基于模板方法模式的，如果需要自定义同步器一般的方式是这样：
    * 使用者继承 AbstractQueuedSynchronizer 并重写指定的方法。（对于共享资源 state 的获取和释放）
    * 将 AQS 组合在自定义同步组件的实现中，并调用其模板方法，而这些模板方法会调用使用者重写的方法。
 ##### Semaphore（信号量）
@@ -455,10 +466,67 @@ public class CyclicBarrierExample3 {
    * AtomicReference：引用类型原子类
    * AtomicMarkableReference：原子更新带有标记的引用类型。该类将 boolean 标记与引用关联起来，也可以解决使用 CAS 进行原子更新时可能出现的 ABA 问题。
    * AtomicStampedReference ：原子更新带有版本号的引用类型。该类将整数值与引用关联起来，可用于解决原子的更新数据和数据的版本号，可以解决使用 CAS 进行原子更新时可能出现的 ABA 问题。
-2. CAS ABA问题：线程1获取变量的值为A，线程B获取了该变量，并修改为B，最后又修改回A，此时线程1再次获取变量值仍然为A,CAS成功。
+2. 基本类型 
+   * AtomicInteger：整型原子类
+   * AtomicLong：长整型原子类
+   * AtomicBoolean ：布尔型原子类
+```java
+//以AtomicInteger为例
+public final int get() //获取当前的值
+public final int getAndSet(int newValue)//获取当前的值，并设置新的值
+public final int getAndIncrement()//获取当前的值，并自增
+public final int getAndDecrement() //获取当前的值，并自减
+public final int getAndAdd(int delta) //获取当前的值，并加上预期的值
+boolean compareAndSet(int expect, int update) //如果输入的数值等于预期值，则以原子方式将该值设置为输入值（update）
+public final void lazySet(int newValue)//最终设置为newValue,使用 lazySet 设置之后可能导致其他线程在之后的一小段时间内还是可以读到旧的值。
+``` 
+1. CAS ABA问题：线程1获取变量的值为A，线程B获取了该变量，并修改为B，最后又修改回A，此时线程1再次获取变量值仍然为A,CAS成功。
 ##### 对象的属性修改类型原子类
 要想原子地更新对象的属性需要两步。第一步，因为对象的属性修改类型原子类都是抽象类，所以每次使用都必须使用静态方法 newUpdater()创建一个更新器，并且需要设置想要更新的类和属性。第二步，更新的对象属性必须使用 public volatile 修饰符。
+   * AtomicIntegerFieldUpdater:原子更新整形字段的更新器
+   * AtomicLongFieldUpdater：原子更新长整形字段的更新器
+   * AtomicReferenceFieldUpdater ：原子更新引用类型里的字段的更新器
+```java
+import java.util.concurrent.atomic.AtomicIntegerFieldUpdater;
 
+public class AtomicIntegerFieldUpdaterTest {
+	public static void main(String[] args) {
+		AtomicIntegerFieldUpdater<User> a = AtomicIntegerFieldUpdater.newUpdater(User.class, "age");
+
+		User user = new User("Java", 22);
+		System.out.println(a.getAndIncrement(user));// 22
+		System.out.println(a.get(user));// 23
+	}
+}
+
+class User {
+	private String name;
+	public volatile int age;
+
+	public User(String name, int age) {
+		super();
+		this.name = name;
+		this.age = age;
+	}
+
+	public String getName() {
+		return name;
+	}
+
+	public void setName(String name) {
+		this.name = name;
+	}
+
+	public int getAge() {
+		return age;
+	}
+
+	public void setAge(int age) {
+		this.age = age;
+	}
+
+}
+```
 #### 其他
 ##### 乐观锁与悲观锁
 1. 乐观锁：总是假设最好的情况，每次去拿数据的时候都认为别人不会修改，所以不会上锁，但是在提交更新的时候会对数据的冲突与否进行检测，如果发现冲突，要么再重试一次，要么切换为悲观的策略。
@@ -466,16 +534,23 @@ public class CyclicBarrierExample3 {
 2. 悲观锁：总是假设最坏的情况，每次去拿数据的时候都认为别人会修改，所以每次在拿数据的时候都会上锁（每次请求都会先对数据进行加锁， 然后进行数据操作，最后再解锁），即共享资源每次只给一个线程使用，其它线程阻塞，用完后再把资源转让给其它线程
    * 通过synchronized关键字或Lock接口来实现的。
 ##### LongAdder
-* LongAdder是jdk8新增的用于并发环境的计数器，目的是为了在高并发情况下，代替AtomicLong/AtomicInt，成为一个用于高并发情况下的高效的通用计数器。LongAdder是根据锁分段来实现的，它里面维护一组按需分配的计数单元，并发计数时，不同的线程可以在不同的计数单元上进行计数，这样减少了线程竞争，提高了并发效率。本质上是用空间换时间的思想，不过在实际高并发情况中消耗的空间可以忽略不计。
+* LongAdder是jdk8新增的用于并发环境的计数器，目的是为了在高并发情况下，代替AtomicLong/AtomicInt，成为一个用于高并发情况下的高效的通用计数器。LongAdder是根据锁分段来实现的，它里面维护一组按需分配的计数单元，并发计数时，不同的线程可以在不同的计数单元上进行计数，在获取值时，调用sum()方法，对所有单元的累加结果求和，获取最终值。这样减少了线程竞争，提高了并发效率。本质上是用空间换时间的思想，不过在实际高并发情况中消耗的空间可以忽略不计。
 * 现在，在处理高并发计数时，应该优先使用LongAdder，而不是继续使用AtomicLong。当然，线程竞争很低的情况下进行计数，使用Atomic还是更简单更直接，并且效率稍微高一些。其他情况，比如序号生成，这种情况下需要准确的数值，全局唯一的AtomicLong才是正确的选择，此时不应该使用LongAdder。
 ##### ThreadLocal
 即线程私有的局部变量存储容器，可以理解成每个线程都有自己专属的存储容器，它用来存储线程私有变量，其实它只是一个外壳，内部真正存取是一个Map。每个线程可以通过set()和get()存取变量，多线程间无法访问各自的局部变量，相当于在每个线程间建立了一个隔板。只要线程处于活动状态，它所对应的ThreadLocal实例就是可访问的，线程被终止后，它的所有实例将被垃圾收集。
+一般都会将ThreadLocal声明成一个静态字段，同时初始化.
 1. 常用场景
    * 每个线程分配一个 JDBC 连接 Connection
    * 管理Session会话，使线程处理多次处理会话时始终是同一个Session。
 2. 实现原理：
+   * 使用Map存储每个线程设置的变量，key为对应线程的一个弱引用。
    * 存储使用数组实现，使用get和set方法时，为先获取当前线程，再取出当前的ThreadLocalMap
    * hash冲突使用线性查找方式解决，因此，应使用尽量少的threadlocal变量。
+   * 每创建一个`ThreadLocal`对象时，会调用`ThreadLocal.nextHashCode()`方法，获得当前的哈希值，其增量是一个黄金分割数，可以保证hash的分布均匀。
+3. 常用方法：
+   * get():获取线程本地变量的内容。
+   * set(T value):设置线程本地变量的内容
+   * remove():移除线程本地变量。注意在线程池的线程复用场景中在线程执行完毕时一定要调用remove，避免在线程被重新放入线程池中时被本地变量的旧状态仍然被保存。且若不回收的话，可能会导致内存泄漏。
 ##### 注意事项
 1. this逃逸问题
 2. 线程资源必须通过线程池提供，不允许在应用中自行显式创建线程。使用线程池的好处是减少在创建和销毁线程上所消耗的时间以及系统资源开销，解决资源不足的问题。如果不使用线程池，有可能会造成系统创建大量同类线程而导致消耗完内存或者“过度切换”的问题。
