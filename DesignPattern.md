@@ -1069,6 +1069,113 @@ class Singleton{
     }
 }
 ```
+#### 单例模式的实现
+##### 懒汉式（线程不安全）
+延迟了实例化，只有在被调用后才会创建实例
+```java
+public class Singleton {
+     private static Singleton uniqueInstance;
+ 
+     private Singleton() {
+ 
+    }
+ 
+    public static Singleton getUniqueInstance() {
+        if (uniqueInstance == null) {
+            uniqueInstance = new Singleton();
+        }
+        return uniqueInstance;
+    }
+}
+```
+##### 饿汉式（线程安全）
+提前实例化好了一个实例，避免了线程不安全问题的出现,但可能会导致资源浪费
+```java
+public class Singleton {
+
+    private static Singleton uniqueInstance = new Singleton();
+
+    private Singleton() {
+    }
+
+    public static Singleton getUniqueInstance() {
+        return uniqueInstance;
+    }
+
+}
+```
+##### 懒汉式（线程安全）
+对get方法加锁保证线程安全，但性能较低
+```java
+public class Singleton {
+    private static Singleton uniqueInstance;
+
+    private static singleton() {
+    }
+
+    private static synchronized Singleton getUinqueInstance() {
+        if (uniqueInstance == null) {
+            uniqueInstance = new Singleton();
+        }
+        return uniqueInstance;
+    }
+
+}
+```
+##### 双重检查锁实现（线程安全）
+仅当需要创建实例时上锁，其中对实例采用volatile关键字修饰，保证多线程情况下不会因为指令重排序导致不安全。
+```java
+public class Singleton {
+
+    private volatile static Singleton uniqueInstance;
+
+    private Singleton() {
+    }
+
+    public static Singleton getUniqueInstance() {
+        if (uniqueInstance == null) {
+            synchronized (Singleton.class) {
+                if (uniqueInstance == null) {
+                    uniqueInstance = new Singleton();
+                }
+            }
+        }
+        return uniqueInstance;
+    }  
+}
+```
+##### 静态内部类实现（线程安全）
+延迟实例化，节约了资源；且线程安全,由JVM保证只会初始化一次；性能也提高了。
+```java
+public class Singleton {
+
+    private Singleton() {
+    }
+
+    private static class SingletonHolder {
+        private static final Singleton INSTANCE = new Singleton();
+    }
+
+    public static Singleton getUniqueInstance() {
+        return SingletonHolder.INSTANCE;
+    }
+
+}
+```
+##### 枚举类实现（线程安全）
+默认枚举实例的创建就是线程安全的，且在任何情况下都是单例，天然防止反射和反序列化调用
+```java
+public enum Singleton {
+
+    INSTANCE;
+
+    //添加自己需要的操作
+    public void doSomeThing() {
+
+    }
+
+}
+```
 ### 十八. 桥接模式
 &#8195;&#8195;该模式将抽象部分与它的实现部分分离，使它们都可以独立的变化。此处的实现是指抽象类和它的派生类用来实现自己的对象。例如学校的学生可以按班级来分类实现，也可以按性别来分类实现。其基本结构为：
 ![桥接模式结构图](DesignPattern/17.png)
