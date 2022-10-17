@@ -55,4 +55,37 @@
    * `--name` 指定容器别名
    * `-d` 在后台运行
 2. `docker [container] start <container_name>`启动容器
-3. `docker [container] run [option] <image_name>`创建并启动容器
+3. `docker [container] run [option] <image_name>`创建并启动容器某些时候，执行此条时因为命令无法正常执行会出错直接退出，常见的错误代码为：
+   * `125` 指定了不支持的docker命令参数
+   * `126` 指定命令无法执行，如权限不足
+   * `127` 容器内命令无法找到
+#### 停止容器
+1. `docker [container] pause <container_name>`暂停容器的运行，可使用`unpause`指令恢复
+2. `docker [container] stop [-t = 10] <container_name>`终止容器，先尝试用SIGTERM信号，等待一定时间后使用SIGKILL信号，使用`kill`直接使用SIGKILL信号。可使用`start`来重新启动
+#### 进入容器
+当使用`-d`参数时，容器进入后台运行，用户无法看到容器中的信息也无法进行操作，需要进入容器
+1. `docker [container] attach [option] <container_name>`
+   * `–detach-keys`	指定退出attach模式的快捷键序列，默认是 CTRL-p
+   * `–no-stdin`	是否关闭标准输入，默认是打开
+   * `–sig-proxy` 是否代理收到的系统信号给应用进程，默认为true
+   * 多个窗口同时attach到同一个容器时，所有窗口都会同步显示，某个窗口阻塞则其他窗口也无法操作
+2. `docker [container] exec [option] <container_name> [<command>]`
+   * `-d` :分离模式,在后台运行
+   * `-i` :即使没有附加也保持STDIN 打开
+   * `-t` :分配一个伪终端
+   * `--privilegd true | false` ：是否给执行命令以高权限，默认为false
+   * `--detach-keys ""` :指定将容器切回后台的按键
+   * `-e []` :指定环境变量列表
+   * `-u ""` :执行命令的用户名或ID
+#### 删除容器
+1. `docker [container] rm [option] <container_name>`删除处于终止或退出状态的容器
+   * `-f`强行删除运行时容器：先发送SIGKILL信号，再删除。
+   * `-l`删除容器的连接但保留容器
+   * `-v`删除容器挂载的数据卷
+#### 导入和导出
+1. `docker [container] export [-o ""] <container_name>`将一个任意状态的已创建容器导出到一个文件，也可使用重定向指定导出的tar文件
+2. `docker [container] import <file|url> <repository>`将容器导入到本地镜像库（会舍弃历史信息和元数据）
+#### 查看容器
+1. `docker [container] inspect [option] <container_name>`查看容器详情，以json形式返回
+2. `docker [container] top [option] <container_name>`类似于top命令，会打印处容器内的进程信息
+3. `docker [container] stats [option] <container_name>`显示CPU、内存、存储等统计信息
