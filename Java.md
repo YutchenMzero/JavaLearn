@@ -26,6 +26,18 @@ CopyOnWriteArrayList允许线程并发访问读操作，这个时候是没有加
 2. 为了解决碰撞，当链表长度到达一个阈值时（7或8），会将链表转换成红黑树提高性能。而当链表长度缩小到另一个阈值时（6），又会将红黑树转换回单向链表提高性能。
 3. 若链表长度达到8，则将链表转换成红黑树，并将数据插入树中；检查链表长度转换成红黑树之前，还会先检测当前数组数组是否到达一个阈值（64），如果没有到达这个容量，会放弃转换，先去扩充数组。所以上面也说了链表长度的阈值是7或8，因为会有一次放弃转换的操作。
 4. 容量以2次方进行扩充，首先是因为mask的计算只要将最高位前一位置为1；其次元素的在表中的hash不用重新计算，只要判断其hashcode中新增的位所在位置时1还是0，1则原hash+oldcap，0则原hash
+##### treeMap
+1. 默认按照key值升序排序，可使用以下方式取出
+```java
+    for (Map.Entry<Integer,Character> e : map.entrySet()){
+            System.out.println(e.getValue());
+        }
+```
+2. 若要按value排序，需要先转为List,再调用Collections.sort()方法
+```java
+    List<Map.Entry<Integer,Character>> list = new ArrayList<>(map.entrySet());
+    Collections.sort(list,(o1,o2)-> o1.getValue()-o2.getValue() ); 
+```
 #### 其他
 1. 需要使用线程安全的集合类，也建议将线程不安全的集合类包装成线程安全集合类的方式（使用Collection提供的synchronizedXXX()方法，如synchronizedMap），而不是直接使用这些古老的API（Vector，HashTable）
 ### 2. equals()与==   
