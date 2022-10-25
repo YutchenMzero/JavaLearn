@@ -458,6 +458,59 @@ class IG extends Team{
     }
 }
 ```
+#### JAVA 8函数式编程对模板模式的支持
+##### Supplier
+它是一个供给型接口，可以理解为返回某些值的方法，如下
+```java
+public List<String> getList() {
+
+    return new ArrayList();
+
+}
+//Supplier实现
+Supplier<List<String>> listSupplier = ArrayList::new;
+```
+##### Consumer
+消费型接口，简单点说，这就是一个使用某些值(如方法参数)并对其进行操作的方法。如下：
+```java
+public void sum(String a1) {
+
+    System.out.println(a1);
+
+}
+//Consumer实现
+Consumer<String> printConsumer = a1 -> System.out.println(a1);
+```
+supplier接口只有一个抽象方法get(),通过get方法产生一个T类型实例。其定义如下
+```java
+@FunctionalInterface
+public interface Supplier<T> {
+  /**
+   * Gets a result.
+   *
+   * @return a result
+   */
+  T get();
+}
+```
+##### 方法改造
+```java
+//模板
+ public void show(Supplier<String> supplier，Consumer<String> consumer,String n){
+        String name = supplier.get();//一般用其实现不同的逻辑判断
+        System.out.println("老板"+name);
+        teamName();
+        consumer.accpect(n);
+        teamLeader();
+    }
+//具体业务场景
+ public void show_1(String s){
+        show(() -> "爱德朱",s->System.out.println("队员"+s));
+    }
+```
+通过使用Java 8中的Comsumer，我们把模板方法改造了，改造之后不再需要抽象类、抽象方法，也不再需要为每一个业务都创建一个实现类了。我们可以把所有的业务逻辑内聚在同一个业务类中。这样非常方便这段代码的后期运维。
+
+
 ### 八. 外观模式
 &#8195;&#8195;为子系统中的一组接口提供一个一致的界面，此模式定义了一个高层接口，这个接口使得这一子系统更加容易使用。（即提供功能接口，并封闭底层实现）其基本结构如下：
 ![外观模式结构图](DesignPattern/7.png)

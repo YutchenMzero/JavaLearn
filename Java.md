@@ -234,6 +234,39 @@ lambda表达式是java8中引入的特性，允许通过表达式来代替功能
 * 捕获的变量在运行过程中不能发生改变(IDEA中会提醒变量应当声明为final或相对final)
 * lambda的变量捕获与匿名内部类要求一致
 
+#### 函数式接口
+如果一个接口只有一个抽象方法，该接口为函数式接口，使用lambda表达式将匹配到该方法上。可以用`@FunctionnalInterface`注解。
+1. Consumer:接受一个参数但无返回值
+2. Supplier：无参数，有返回值
+3. Function：接受一个参数，返回一个结果
+4. Predicate：接收参数，返回布尔类型结果
+#### 方法引用
+是Lambda表达式的一种简写形式。若Lambda表达式方法体中只是调用一个特定的已存在的方法，则可以使用方法引用。常见形式：
+* 对象::实例方法
+* 类::静态方法
+* 类::实例方法
+* 类::new
+### Stream 流
+中间操作生成流，且只有在进行终止操作时，这些中间操作才会执行。常用的生成流为Collections中的stream()方法。
+1. 中间操作
+   * filter,limit,skip,distinct,sorted
+   * map：映射
+2. 终止操作
+   * forEach,min,max,count
+   * reduce：规约，即将多个元素规约为一个元素
+   * collect
+### Optional
+为了解决NPE(空指针异常)，其可包含空值或非空值。
+#### 创建
+1. Optional.ofNullable(object)：对象为null时，返回空实例
+2. Optional.of(object)：对象为null时，抛出NPE异常。
+#### 判断
+1. isPresent()：判断optional是否为空，如果空则返回false，否则返回true
+2. ifPresent(Consumer c)：如果optional不为空，则将optional中的对象传给Comsumer函数
+3. orElse(T other)：如果optional不为空，则返回optional中的对象；如果为null，则返回 other 这个默认值 
+4. orElseGet(Supplier<T> other)：如果optional不为空，则返回optional中的对象；如果为null，则使用Supplier函数生成默认值other
+5. orElseThrow(Supplier<X> exception)：如果optional不为空，则返回optional中的对象；如果为null，则抛出Supplier函数生成的异常
+
 ### 序列化
 序列化机制可以将对象转换成字节序列，这些字节序列可以保存在磁盘上，也可以在网络中传输，并允许程序将这些字节序列再次恢复成原来的对象。其中，对象的序列化（Serialize），是指将一个Java对象写入IO流中，对象的反序列化（Deserialize），则是指从IO流中恢复该Java对象。
 若对象要支持序列化机制，则它的类需要实现Serializable接口，该接口是一个标记接口，它没有提供任何方法，只是标明该类是可以序列化的
