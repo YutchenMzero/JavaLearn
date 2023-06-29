@@ -50,3 +50,17 @@ eureka:
 
 ??restTemoplate的使用
 使用Rundashboard管理多服务启动
+要注意版本依赖关系:
+注意最新版springcloud的pom引入方式；
+初始化向导:start.aliyun.com
+### Nacos注册中心
+Nacos Discover
+服务注册
+服务心跳
+服务同步
+服务发现
+服务健康检查
+
+需要单独下载启动，配置启动模式等
+
+yml文件中的nacos配置信息：
