@@ -50,3 +50,27 @@ eureka:
 
 ??restTemoplate的使用
 使用Rundashboard管理多服务启动
+
+###
+ 此处的笔记未上传
+###
+
+## Nacos
+登陆的默认用户名和密码为:`nacos`
+### yml文件配置
+```yaml
+server:
+  port: 8010
+spring: 
+  application:
+    name: #nacos会将该部分名称作为服务名
+  cloud:
+    nacos:
+      server-addr: 127.0.0.1:8848 #nacos服务的地址
+      discovery:
+        username:
+        password:
+        namespace:
+```
+### 使用
+调用nacos服务的时候，需要启用负载均衡，即：`@LoadBalanced`注解
