@@ -57,3 +57,4 @@ HEAD 是一个对当前检出记录的符号引用,也就是指向你正在其�
 
 #### github相关问题
 1. 遭遇如`Failed to connect to github.com port 443`的问题，若使用vpn得话，可使用`git config --global http.proxy <ip:socket>`配置git的代理，`<ip:socket>`应与所用的代理一致
+    * 取消代理：`git config --global --unset http.proxy `

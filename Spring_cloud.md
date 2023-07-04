@@ -51,12 +51,35 @@ eureka:
 ??restTemoplate的使用
 使用Rundashboard管理多服务启动
 
-###
- 此处的笔记未上传
-###
-
-## Nacos
+要注意版本依赖关系:[版本说明](https://github.com/alibaba/spring-cloud-alibaba/wiki/%E7%89%88%E6%9C%AC%E8%AF%B4%E6%98%8E)
+#### 注意最新版springcloud的pom引入方式
+在父maven的`.pom`文件中使用dependencyManagement引入
+```xml
+    <dependencyManagement>
+        <dependencies>
+            <dependency>
+                <groupId>com.alibaba.cloud</groupId>
+                <artifactId>spring-cloud-alibaba-dependencies</artifactId>
+                <version><>
+                <type>pom</type>
+                <scope>import</scope>
+            </dependency>
+        </dependencies>
+    </dependencyManagement>
+```
+初始化向导:start.aliyun.com
+### Nacos注册中心
 登陆的默认用户名和密码为:`nacos`
+### 主要功能
+Nacos Discover
+服务注册
+服务心跳
+服务同步
+服务发现
+服务健康检查
+
+需要单独下载启动，配置启动模式等
+
 ### yml文件配置
 ```yaml
 server:
