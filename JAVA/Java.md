@@ -4,7 +4,7 @@
 * 抽象类可以有构造函数，用于封装继承子类公共的东西。
   
 ### 1. List、Map与Set
-![类图](res/Javauml/setlistandmap.png)
+![类图](/res/Javauml/setlistandmap.png)
 #### List
 * 可允许重复对象，可插入多个NULL值。
 * 是一个有序容器，输出顺序是插入顺序。
@@ -159,7 +159,7 @@ public boolean equals(Object obj) {
 * char型和short型参与运算时，必须先转换成int型。
 * 在赋值运算中，赋值号两边的数据类型不同时，需要把右边表达式的类型将转换为左边变量的类型。如果右边表达式的数据类型长度比左边长时，将丢失一部分数据，这样会降低精度。
 下图表示了类型自动转换的规则：
-![自动转换规则](res/Javauml/415611_1442458661106_F4A62FDD254F710F39378C754ED65E61.jpeg)
+![自动转换规则](/res/Javauml/415611_1442458661106_F4A62FDD254F710F39378C754ED65E61.jpeg)
 ### 7. volatile和synchronized的区别
 * volatile本质是在告诉jvm当前变量在寄存器（工作内存）中的值是不确定的，需要从主存中读取； synchronized则是锁定当前变量，只有当前线程可以访问该变量，其他线程被阻塞住。
 * volatile仅能使用在变量级别；synchronized则可以使用在变量、方法、代码块和类级别的。
