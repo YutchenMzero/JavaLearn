@@ -72,3 +72,30 @@ class DemoControllerTest {
     */
 }
 ```
+
+### Lombok
+用于简化实体类编写的注解
+常用注解有：
+* `@NoArgsConstructor/@AllArgsConstructor` 生成无参/全参构造函数
+* `@Getter/@Setter` 生成get/set方法
+* `@ToString/@EqualsAndHashCode` 生成toString，equals和hashcode方法，同时后者还会生成一个canEqual方法
+* `@Data` 效果等同于 `@Getter` + `@Setter` + `@ToString` + `@EqualsAndHashCode` + `@RequiredArgsConstructor` 
+* `@Accessors` 主要服务于get和set方法
+    * fluent 属性 : 生成的方法前不会有"get"和"set"前缀，且支持set方法的链式调用
+    * chain 属性 : 支持set方法的链式调用
+    * prefix 属性 : 生成get与set方法时会去除指定前缀
+
+### [MyBatis plus](https://baomidou.com/pages/24112f/)
+内置了通用Mapper和通用Service，支持lambda表达式
+1. BaseMapper中集成了大量的通用CRUD操作，自定义的Mapper只需继承该类就可实现常用功能；
+    常用方法：
+    * insert()
+    * update()
+    * selectById()
+    * exist()
+2. ServiceImpl中集成了常用的服务，自定义的Service只需继承它就可以实现常用的数据库操作，继承要求：`... extend ServiceImpl<M extends BaseMapper<T>, T>`
+#### 条件构造器Wrapper
+可以使用wrapper构造较为复杂的SQL;[参考资料](https://blog.csdn.net/qq_39715000/article/details/120090033)
+#### 其他
+1. 通过`@TableField(fill = FieldFill.INSERT)//FieldFill.INSERT_UPDATE`自动生成创建和更新时间
+
