@@ -99,7 +99,7 @@ spring:
 调用nacos服务的时候，需要启用负载均衡，即：`@LoadBalanced`注解
 
 #### 集群部署() 
-1. 更改配置文件application.properties，使用外置数据源mysql(5.7+),新建nacos的数据库(默认提供了一个sql文件用于创建),并设置服务端口
+1. 更改nacos配置文件application.properties，使用外置数据源mysql(5.7+),新建nacos的数据库(默认提供了一个sql文件用于创建),并设置服务端口
 2. 更改conf目录下`cluster.conf.example`为`cluster.conf`，并添加节点配置
 3. 更改nginx配置文件`conf\nginx.conf`进行负载均衡：
 
@@ -121,6 +121,10 @@ spring:
 ```
 2. 自定义规则：继承AbstractLoadBalanceRule类，并重写choose()方法
 
+### nacos配置中心
+1. 添加config_nacos的依赖，必须使用bootstrap.yml配置文件添加所用nacos（配置中心所在位置）的服务地址
+2. 增加权限控制时需要更改nacos配置文件application.properties`nacos.core.auth.enabled=true`
+
 ### 微服务调用组件Feign-OpenFeign
 声明式、模板化的HTTP客户端。
 #### feign的使用
@@ -129,7 +133,7 @@ spring:
 ```java
 /*
 * contextId:
-* value: 服务名（接口提供方的服务名）
+* value: 服务名（接口提供方的服务名），注意不支持下划线！！！
 * name: 对应的服务名
 * path：接口所在controller的RequestMapping 
 */
@@ -140,4 +144,21 @@ public interface RemoteAioInfoService {
     Boolean queryAIOInfoDTOListBySnCodes(@RequestBody List<String> List, @RequestHeader(SecurityConstants.FROM) String from);//feign中对注解的要求比较严格，如@PathVariable需要指定value
 }
 ```
-#### 日志配置
+#### 相关配置
+1. 配置文件
+```yml
+feign:
+  client:
+    config:
+      service-name: ##服务名
+        loggerLevel: BASIC  
+        connectTimeout：2000 ##连接超时时间，默认2s
+        readTimeout： 5000 ##读取超时时间，默认5s
+        requestInterceptors[0]:
+          com.temp  ## 自定义拦截器的类名
+
+```
+2. 自定义拦截器：实现RequestInterceptor接口，重写apply方法
+
+
+  
