@@ -85,7 +85,7 @@ public @interface Resource {
 
 ### Spring AoP
 AOP能够将那些与业务无关，却为业务模块所共同调用的逻辑或责任（例如事务处理、日志管理、权限控制等）封装起来，便于减少系统的重复代码，降低模块间的耦合度，并有利于未来的可拓展性和可维护性。它是基于动态代理的，如果要代理的对象，实现了某个接口，那么 Spring AOP 会使用 JDK Proxy，去创建代理对象，而对于没有实现接口的对象，就无法使用 JDK Proxy 去进行代理了，这时候 Spring AOP 会使用 Cglib 生成一个被代理对象的子类来作为代理，如下图所示：
-![Spring AOP流程](work_with_IDEA_res/2.png)
+![Spring AOP流程](/work_with_IDEA_res/2.png)
 此外还可以使用AspectJ框架。
 #### 基本术语
 * 目标(Target)：	被通知的对象
@@ -140,7 +140,7 @@ MVC指模型(Model)、视图(View)、控制器(Controller)的简写，其核心�
 * Handler ：请求处理器，处理实际请求的处理器。
 * ViewResolver ：视图解析器，根据 Handler 返回的逻辑视图 / 视图，解析并渲染真正的视图，并传递给 DispatcherServlet 响应客户端
 #### 工作原理
-![Spring MVC工作原理](work_with_IDEA_res/3.png)
+![Spring MVC工作原理](/work_with_IDEA_res/3.png)
 1. 客户端（浏览器）发送请求， `DispatcherServlet`拦截请求。
 2. `DispatcherServlet` 根据请求信息调用 HandlerMapping 。`HandlerMapping `根据 uri 去匹配查找能处理的 `Handler`（也就是我们平常说的 Controller 控制器） ，并会将请求涉及到的拦截器和 `Handler` 一起封装。
 3. `DispatcherServlet` 调用 `HandlerAdapter`适配执行 `Handler` 。

@@ -6,14 +6,14 @@ Redis：k-v持久化产品，内存型数据库,也可以持久化到磁盘。va
     Sets(提供集合操作),
     Sorted sets(相对于set增加了顺序属性)
 #### StringRedisTemplate
-    其key和value默认是String方式
- ```java
+其key和value默认是String方式
+``` java
     stringRedisTemplate.opsForValue();　　//操作字符串
     stringRedisTemplate.opsForHash();　　 //操作hash
     stringRedisTemplate.opsForList();　　 //操作list
     stringRedisTemplate.opsForSet();　　  //操作set
     stringRedisTemplate.opsForZSet();　 　//操作有序set
-```
+``` 
 ### controller的单元测试
 1.在需测试的controller中右键单击选择"generate"选项，生成test。(注意：测试文件的目录需要提前建立)
 2.假设要测试的类为`DemoController`，自动生成的测试类为`demoControllerTest`测试方式为
@@ -69,17 +69,19 @@ class DemoControllerTest {
                 MockMvcRequestBuilders.post("/getRequestBodyValue")
                         .header("token", "收藏点赞")
                         .accept(MediaType.parseMediaType("application/json;charset=UTF-8")))
-    */
-}
-```
+    */ 
+} 
+``` 
 
 ### [Lombok] (https://projectlombok.org/features/)
 用于简化实体类编写的注解
 常用注解有：
 * `@NoArgsConstructor/@AllArgsConstructor` 生成无参/全参构造函数
+* `@RequiredArgsConstructor` 生成带有必需参数的构造函数（声明为final或者有`@NotNull`注解），写在类上可以代替`@Autowired`注解(采用了构造器注入的形式)
 * `@Getter/@Setter` 生成get/set方法
 * `@ToString/@EqualsAndHashCode` 生成toString，equals和hashcode方法，同时后者还会生成一个canEqual方法
 * `@Data` 效果等同于 `@Getter` + `@Setter` + `@ToString` + `@EqualsAndHashCode` + `@RequiredArgsConstructor` 
+* `@SneakyThrows` 生成try-catch逻辑
 * `@Accessors` 主要服务于get和set方法
     * fluent 属性 : 生成的方法前不会有"get"和"set"前缀，且支持set方法的链式调用
     * chain 属性 : 支持set方法的链式调用
@@ -99,3 +101,34 @@ class DemoControllerTest {
 #### 其他
 1. 通过`@TableField(fill = FieldFill.INSERT)//FieldFill.INSERT_UPDATE`自动生成创建和更新时间
 
+### [gradle](https://zhuanlan.zhihu.com/p/570009095)
+#### 项目结构
+**gradle**：gradle-wrapper存放位置
+**src**:与maven目录一致
+**build.gradle**： gradle项目构建文件
+**gradlew**：gradle命令行工具
+**settings.gradle**: 多模块项目配置文件
+#### buildscript
+1. buildscript中的声明是gradle脚本自身需要使用的资源。gradle在执行脚本时，会优先执行buildscript代码块中的内容，然后才会执行剩余的build脚本。buildscript代码块中你可以对dependencies使用classpath声明。
+2. 该classpath声明说明了在执行其余的build脚本时，class loader可以使用这些你提供的依赖项。这也正是我们使用buildscript代码块的目的。某种意义上来说，classpath 声明的依赖，不会编译到最终的 jar包里面
+3. 另外，buildscript必须位于plugins块和apply plugin之前
+#### 依赖引入
+使用dependcies代码块，遵循scope 'gropId:artifactId:version'的格式，也可以是scope (gropId:artifactId:version)形式，其中scope分为：
+1. implementation：会将指定的依赖添加到编译路径，并且会将该依赖打包到输出，但是这个依赖在编译时不能暴露给其他模块，例如依赖此模块的其他模块。这种方式指定的依赖在编译时只能在当前模块中访问。
+2. api：api关键字是由java-library提供，若要使用，请在plugins中添加：id 'java-library'（在旧版本中作用与compile相同，新版本移除了compile）使用api配置的依赖会将对应的依赖添加到编译路径，并将依赖打包输出，但是这个依赖是可以传递的，比如模块A依赖模块B，B依赖库C，模块B在编译时能够访问到库C，而implemetation不同的是，在模块A中库C也是可以访问的。
+3. compileOnly：compileOnly修饰的依赖会添加到编译路径中，但是不会被打包，因此只能在编译时访问，且compileOnly修饰的依赖不会传递。
+4. runtimeOnly：这个与compileOnly相反，它修饰的依赖不会添加到编译路径中，但是能被打包，在运行时使用。和Maven的provided比较接近。
+5. annotationProcessor：用于注解处理器的依赖配置。
+6. testImplementation：这种依赖在测试编译时和运行时可见，类似于Maven的test作用域。
+7. testCompileOnly和testRuntimeOnly：这两种类似于compileOnly和runtimeOnly，但是作用于测试编译时和运行时。
+8. classpath：classpath并不能在buildscript外的dependcies中使用
+#### 仓库管理
+gradle仓库可以直接使用maven的仓库，但是gradle下载的jar包文件格式与maven不一样，所以不能和maven本地仓库共用，仓库的配置，是在repository中的：
+``` java
+repositories {
+     mavenLocal() //本地仓库
+     maven { url 'http://maven.aliyun.com/nexus/content/groups/public' } //外部仓库（阿里云）
+     //若这里解析报错，则将http替换为https，或者在url前边添加 allowInsecureProtocol = true
+     mavenCentral() // maven 中心仓库
+ }
+```
