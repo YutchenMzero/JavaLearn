@@ -68,9 +68,9 @@ eureka:
     </dependencyManagement>
 ```
 初始化向导:start.aliyun.com
-### Nacos注册中心
+### [Nacos注册中心](https://nacos.io/zh-cn/docs/v2/guide/admin/cluster-mode-quick-start.html)
 登陆的默认用户名和密码为:`nacos`
-### 主要功能
+#### 主要功能
 Nacos Discover
 服务注册
 服务心跳
@@ -80,7 +80,7 @@ Nacos Discover
 
 需要单独下载启动，配置启动模式等
 
-### yml文件配置
+#### yml文件配置
 ```yaml
 server:
   port: 8010
@@ -95,5 +95,49 @@ spring:
         password:
         namespace:
 ```
-### 使用
+#### 使用
 调用nacos服务的时候，需要启用负载均衡，即：`@LoadBalanced`注解
+
+#### 集群部署() 
+1. 更改配置文件application.properties，使用外置数据源mysql(5.7+),新建nacos的数据库(默认提供了一个sql文件用于创建),并设置服务端口
+2. 更改conf目录下`cluster.conf.example`为`cluster.conf`，并添加节点配置
+3. 更改nginx配置文件`conf\nginx.conf`进行负载均衡：
+
+#### Ribbon
+父接口：IRule 
+实现类：
+  RoundRobinRule：线性轮询
+  RandomRule：随机
+  RetryRule:，基于RoundRobinRule，但在连接有效期间可以重试
+  WeightedResponseTimeRule：基于服务实例的响应时间，时间越短，权重越大
+  BestAvailableRule:过滤失效的服务实例，然后使用并发请求最少的实例
+  ZoneAvoidanceRule: 默认规则，根据server所在区域和server的可用性选择，之后采用轮询
+  NacosRule： 采用nacos中使用的权重进行分配
+1. 使用yml配置规则：
+```yml
+[server_name]: #被调用的微服务名
+  ribbon: 
+    NFLoadBalancerRuleClassName: #采用的策略的类名
+```
+2. 自定义规则：继承AbstractLoadBalanceRule类，并重写choose()方法
+
+### 微服务调用组件Feign-OpenFeign
+声明式、模板化的HTTP客户端。
+#### feign的使用
+1. 在springapplication上使用`@FeignClientEnable`注解
+2. 新建feign接口
+```java
+/*
+* contextId:
+* value: 服务名（接口提供方的服务名）
+* name: 对应的服务名
+* path：接口所在controller的RequestMapping 
+*/
+@FeignClient(contextId = "",value = )
+public interface RemoteAioInfoService {
+  //直接复制对应接口的声明
+    @PostMapping("/list")
+    Boolean queryAIOInfoDTOListBySnCodes(@RequestBody List<String> List, @RequestHeader(SecurityConstants.FROM) String from);//feign中对注解的要求比较严格，如@PathVariable需要指定value
+}
+```
+#### 日志配置

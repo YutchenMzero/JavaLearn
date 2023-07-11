@@ -611,24 +611,25 @@ DigestUtils.md5Hex(str);
 ```
 2. 在yml文件中增加邮箱配制
 ```yaml
-mail:
-    username: 邮箱名
-    password: 授权码
-    # 邮箱服务器的host
-    host: smtp.qq.com
-    port: 465
-    properties:
-      mail:
-        smtp:
-          auth: true
-          starttls:
-            enable: true
-            required: true
-          socketFactory:
-          #使用SMTPS协议465端口
-            port: 465
-            class: javax.net.ssl.SSLSocketFactory
-            fallback: false
+spring:
+    mail:
+        username: 邮箱名
+        password: 授权码
+        # 邮箱服务器的host
+        host: smtp.qq.com
+        port: 465
+        properties:
+            mail:
+                smtp:
+                auth: true
+                starttls:
+                    enable: true
+                    required: true
+                socketFactory:
+                #使用SMTPS协议465端口
+                    port: 465
+                    class: javax.net.ssl.SSLSocketFactory
+                    fallback: false
 ```
 3. 邮件服务
 spring为发送邮件提供了一个抽象层: 定义了MailMessage 和 MailSender抽象 来描述邮件消息和邮件发送者
