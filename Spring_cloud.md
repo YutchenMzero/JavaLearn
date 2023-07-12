@@ -98,7 +98,7 @@ spring:
 #### 使用
 调用nacos服务的时候，需要启用负载均衡，即：`@LoadBalanced`注解
 
-#### 集群部署() 
+#### 集群部署 
 1. 更改nacos配置文件application.properties，使用外置数据源mysql(5.7+),新建nacos的数据库(默认提供了一个sql文件用于创建),并设置服务端口
 2. 更改conf目录下`cluster.conf.example`为`cluster.conf`，并添加节点配置
 3. 更改nginx配置文件`conf\nginx.conf`进行负载均衡：
@@ -121,21 +121,25 @@ spring:
 ```
 2. 自定义规则：继承AbstractLoadBalanceRule类，并重写choose()方法
 
-### nacos配置中心
+### [nacos配置中心](https://github.com/alibaba/spring-cloud-alibaba/wiki/Nacos-config)
 1. 添加config_nacos的依赖，必须使用bootstrap.yml配置文件添加所用nacos（配置中心所在位置）的服务地址
 2. 增加权限控制时需要更改nacos配置文件application.properties`nacos.core.auth.enabled=true`
+3. 配置中心默认为properties格式，当配置中心使用yml文件格式时，需要更改bootstrap.yml中的配置
+![配置文件](res/Spring_cloud/1.png)
+#### 注意事项
+1. dataId以properties(默认的文件扩展名方式)为扩展名
+2. 采用`@Value`方式获取到的属性值不会动态刷新，需要在类上增加`@RefreshScope`注解
 
-### 微服务调用组件Feign-OpenFeign
+### [微服务调用组件Feign-OpenFeign](https://spring.io/projects/spring-cloud-openfeign#learn)
 声明式、模板化的HTTP客户端。
 #### feign的使用
 1. 在springapplication上使用`@FeignClientEnable`注解
 2. 新建feign接口
 ```java
 /*
-* contextId:
-* value: 服务名（接口提供方的服务名），注意不支持下划线！！！
-* name: 对应的服务名
-* path：接口所在controller的RequestMapping 
+* contextId: 指定BeanId
+* value/name: 服务名（接口提供方的服务名），注意不支持下划线！！！
+* path：所有方法的前缀路径，即接口所在controller的RequestMapping
 */
 @FeignClient(contextId = "",value = )
 public interface RemoteAioInfoService {
@@ -160,5 +164,63 @@ feign:
 ```
 2. 自定义拦截器：实现RequestInterceptor接口，重写apply方法
 
+### [Sentinel分布式流量控制组件](https://github.com/alibaba/Sentinel/wiki) 
+分为核心库和dashboard
+#### 流量控制
+一般用于服务提供端 
+是针对资源进行控制的
+FlowRule：流量控制规则类  
+使用`@SentinelResource`注解 
+1. 注解属性
+  * `value` 定义资源
+  * `blockHandler` 流控之后的处理方法，默认在同一个类。优先级大于fallback
+  * `fallack` 出现异常后的处理方法，默认在同一个类。
+2. blockHandler类定义要求：
+![类定义要求](res/Spring_cloud/2.png)
 
-  
+**规则：**
+1. QPS每秒访问次数：
+2. 并发线程数：防止服务线程池耗尽的问题
+
+**流控模式：**
+1. 直接流控
+2. 关联流控：当两个资源A和B有资源争抢或者依赖时，构成关联，使A关联的资源为B，当A访问达到阈值时，B被流控。
+3. 链路流控：当资源AB调用了资源C，形成了调用链路，通过对C设置流控，并将A设置为入口资源，则A会被流控，但B不会（该模式需要手动配置关闭链路收敛）
+通过实现BlockExceptionHandler接口，进行统一的异常处理，可以更具异常类型，分别对不同的异常进行不同的处理
+
+**流控效果：**
+1. 快速失败：超过阈值直接拒绝（默认效果）
+2. warmup: 当流量激增时，让通过的流量缓慢增加，在一定时间内逐渐增加到阈值上线（处理激增流量，可以用于防止缓存击穿等）
+3. 排队等待：超过阈值的排队等待一定时长，在时长内若有空余资源，就排队获得资源访问（处理脉冲流量，充分利用空闲时段）
+  * 不支持QPS>1000的情况
+
+**热点参数流控：**
+即对经常访问的数据进行控制。常用操作为：热门商品访问，用户/ip防刷。
+
+#### 降级规则
+一般用于服务消费端，对若依赖服务降级
+DegradeRule：降级规则类
+1. 当出现熔断后，经过时间窗口后的第一次访问若还是失败，就会直接再进入降级熔断
+2. 源码中判断次数采用的是`>`也就是说设置次数为2时，需要出现3次异常才会触发
+
+**熔断策略:**
+1. 慢调用比例：以慢调用（大于设置的RT时长，即最大响应时间，就是慢调用）比例作为阈值
+2. 异常比例
+3. 异常数
+
+**整合openFeign**
+1. 更改配置
+```yml
+feign: 
+  sentinel:
+    enabled: true
+```
+2. 新建fallback类实现对应的feign接口，并在feign接口的注解(`@FeignClient(fallback = )`)上，指定fallback路径
+
+#### 系统保护规则 
+结合系统指标控制流量，一般作为兜底方案
+1. cpu使用率
+
+#### 规则持久化（针对于dashboard）
+以下给出结合nacos的方式中，yml文件的配置方式
+![配置文件](res/Spring_cloud/3.png)
