@@ -166,18 +166,43 @@ feign:
 
 ### [Sentinel分布式流量控制组件](https://github.com/alibaba/Sentinel/wiki) 
 分为核心库和dashboard
-#### 流量控制
-一般用于服务提供端 
-是针对资源进行控制的
+#### 使用方式
+**手动埋点示意：**
+```java
+Entry entry = null;
+// 务必保证 finally 会被执行
+try {
+  // 资源名可使用任意有业务语义的字符串，注意数目不能太多（超过 1K），超出几千请作为参数传入而不要直接作为资源名
+  // EntryType 代表流量类型（inbound/outbound），其中系统规则只对 IN 类型的埋点生效
+  entry = SphU.entry("自定义资源名");
+  // 被保护的业务逻辑
+  // do something...
+} catch (BlockException ex) {
+  // 资源访问阻止，被限流或被降级
+  // 进行相应的处理操作
+} catch (Exception ex) {
+  // 若需要配置降级规则，需要通过这种方式记录业务异常
+  Tracer.traceEntry(ex, entry);
+} finally {
+  // 务必保证 exit，务必保证每个 entry 与 exit 配对
+  if (entry != null) {
+    entry.exit();
+  }
+}
+```
+* 注意：`SphU.entry(xxx)` 需要与 `entry.exit()` 方法成对出现，且`entry1 -> entry2 -> exit1 -> exit2`，应该为 `entry1 -> entry2 -> exit2 -> exit1`
 FlowRule：流量控制规则类  
-使用`@SentinelResource`注解 
+**使用`@SentinelResource`注解** 
 1. 注解属性
   * `value` 定义资源
   * `blockHandler` 流控之后的处理方法，默认在同一个类。优先级大于fallback
   * `fallack` 出现异常后的处理方法，默认在同一个类。
 2. blockHandler类定义要求：
 ![类定义要求](res/Spring_cloud/2.png)
-
+#### 流量控制
+一般用于服务提供端 
+是针对资源进行控制的，将随机到来的请求调整为合适的形状。
+![流量控制说明](res/Spring_cloud/4.png)
 **规则：**
 1. QPS每秒访问次数：
 2. 并发线程数：防止服务线程池耗尽的问题
@@ -224,3 +249,5 @@ feign:
 #### 规则持久化（针对于dashboard）
 以下给出结合nacos的方式中，yml文件的配置方式
 ![配置文件](res/Spring_cloud/3.png)
+
+### Seata分布式事务

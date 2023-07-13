@@ -132,3 +132,7 @@ repositories {
      mavenCentral() // maven 中心仓库
  }
 ```
+
+### netty
+一个异步事件驱动的网络应用程序框架，用于快速开发可维护的高性能协议服务器和客户端。底端采用TCP/IP协议，本质上是一个NIO框架。
+Netty有两组线程池，一个Boss Group，它专门负责客户端连接，另一个Work Group，专门负责网络读写；
