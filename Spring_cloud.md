@@ -68,7 +68,7 @@ eureka:
     </dependencyManagement>
 ```
 初始化向导:start.aliyun.com
-### [Nacos注册中心](https://nacos.io/zh-cn/docs/v2/guide/admin/cluster-mode-quick-start.html)
+### 一、[Nacos注册中心](https://nacos.io/zh-cn/docs/v2/guide/admin/cluster-mode-quick-start.html)
 登陆的默认用户名和密码为:`nacos`
 #### 主要功能
 Nacos Discover
@@ -121,7 +121,7 @@ spring:
 ```
 2. 自定义规则：继承AbstractLoadBalanceRule类，并重写choose()方法
 
-### [nacos配置中心](https://github.com/alibaba/spring-cloud-alibaba/wiki/Nacos-config)
+### 二、[nacos配置中心](https://github.com/alibaba/spring-cloud-alibaba/wiki/Nacos-config)
 1. 添加config_nacos的依赖，必须使用bootstrap.yml配置文件添加所用nacos（配置中心所在位置）的服务地址
 2. 增加权限控制时需要更改nacos配置文件application.properties`nacos.core.auth.enabled=true`
 3. 配置中心默认为properties格式，当配置中心使用yml文件格式时，需要更改bootstrap.yml中的配置
@@ -130,7 +130,7 @@ spring:
 1. dataId以properties(默认的文件扩展名方式)为扩展名
 2. 采用`@Value`方式获取到的属性值不会动态刷新，需要在类上增加`@RefreshScope`注解
 
-### [微服务调用组件Feign-OpenFeign](https://spring.io/projects/spring-cloud-openfeign#learn)
+### 三、[微服务调用组件Feign-OpenFeign](https://spring.io/projects/spring-cloud-openfeign#learn)
 声明式、模板化的HTTP客户端。
 #### feign的使用
 1. 在springapplication上使用`@FeignClientEnable`注解
@@ -164,7 +164,7 @@ feign:
 ```
 2. 自定义拦截器：实现RequestInterceptor接口，重写apply方法
 
-### [Sentinel分布式流量控制组件](https://github.com/alibaba/Sentinel/wiki) 
+### 四、[Sentinel分布式流量控制组件](https://github.com/alibaba/Sentinel/wiki) 
 分为核心库和dashboard
 #### 使用方式
 **手动埋点示意：**
@@ -250,4 +250,158 @@ feign:
 以下给出结合nacos的方式中，yml文件的配置方式
 ![配置文件](res/Spring_cloud/3.png)
 
-### Seata分布式事务
+### 五、[Seata分布式事务解决方案](https://seata.io/zh-cn/docs/overview/what-is-seata.html)
+分布式事务：
+  * 当一次业务需要对不同的数据库操作时
+  * 一次业务需要不同的服务操作数据库时
+**两阶段提交协议**
+即分为预处理阶段和提交阶段
+1. 由协调者发送事务请求，参与者接收后执行事务操作，并记录undo和redo信息，若成功写入，则向协调者范围yes响应
+2. 当协调者收到所有的yes响应，向参与者发送commit请求，参与者接收后提交事务，并返回应答。
+**角色**
+1. TC事务协调者(server端)：维护全局和分支事务的状态，驱动全局事务的提交和回滚
+2. TM事务管理器：开始全局事务，移交和回滚全局事务
+3. RM资源管理器：管理分支资源，与TC通讯，控制分支事务的提交和回滚
+#### 服务搭建与使用
+server端支持三种存储模式：file(单机模式)、db、redis
+更改注册中心和配置中心类型为nacos、更改数据源为db，并配置mysql信息
+各微服务中需要增加undo_log的表
+使用`GlobalTransactional`申明事务 
+
+### 六、[Gateway](https://docs.spring.io/spring-cloud-gateway/docs/current/reference/html/)
+网关作为流量的入口，常用功能包括路由转发、权限验证等，是一种响应式的api网关。需要springboot和Spring Webflux提供的Netty运行支持。
+1. 核心概念
+  * 路由：包括一个id，一个目的uri，断言集合和过滤器集合。当聚合断言为真时，路由匹配。
+  * 断言：` Spring Framework ServerWebExchange`的输入形式，用于匹配http请求中的参数或请求头等。
+  * 过滤器：是`GatewayFilter`的实例，可以在发送下游请求之前或之后对请求和响应进行处理
+
+#### 使用
+1. yml配置文件
+![配置文件](res/Spring_cloud/5.png)
+路由的配置形式分为快捷形式(Shortcut:名称后`=`,参数用`,`分隔)和完全扩展形式(Fully Expanded：键值对形式，`name`制定参数名，`args`指定参数值的键值对)，常使用快捷配置形式
+```yaml
+## Shortcut形式
+spring:
+  cloud:
+    gateway:
+      routes:
+      - id: after_route
+        uri: https://example.org
+        predicates:
+        - Cookie=mycookie,mycookievalue
+## Fully Expanded形式
+spring:
+  cloud:
+    gateway:
+      routes:
+      - id: after_route
+        uri: https://example.org
+        predicates:
+        - name: Cookie
+          args:
+            name: mycookie
+            regexp: mycookievalue
+
+```
+2. 整合nacos
+  * 将uri改为在nacos上注册的服务名
+
+#### 断言工厂
+1. 内置工厂
+  * DateTime形式(After,Before,Between)：ZoneDateTime形式
+  * Host形式：Ant-style的模式匹配(三种通配符：`?`单字符，`*`任意数量字符，`**`任意数量目录)和uri模板变量
+  * Method形式：
+  * Query参数形式：
+  * ...  
+2. 自定义断言工厂
+需要继承AbstractRoutePredicateFactory类，重写apply方法的逻辑(true表示成功)。在apply方法中可以通过exchange.getRequest()方法拿到ServerHttpRequest对象，从而获取到请求的参数、请求方式、请求头等信息。
+  * 要声明为Bean，即使用`@Component`
+  * 注意，命名要以RoutePredicateFactory结尾！！
+  * 在类中要实现一个静态内部类，用于接收配置信息
+```java
+@Component
+public class MyRoutePredicateFactory extends AbstractRoutePredicateFactory<MyRoutePredicateFactory.Config> {
+
+    public MyRoutePredicateFactory() {
+        super(Config.class);
+    }
+
+    @Override
+    public Predicate<ServerWebExchange> apply(Config config) {
+        // grab configuration from Config object
+        return exchange -> {
+            //grab the request
+            ServerHttpRequest request = exchange.getRequest();
+            //take information from the request to see if it
+            //matches configuration.
+            return matches(config, request);
+        };
+    }
+
+    public static class Config {
+        //Put the configuration properties for your filter here
+    }
+
+}
+```
+
+#### 过滤器
+1. [内置过滤器工厂](https://blog.csdn.net/TianYinet/article/details/119922967) 
+2. 自定义过滤器工厂，继承AbstractNameValueGatewayFilterFactory，切名称必须要以GatewayFilterFactory结尾，并声明为Bean。(与自定义断言工厂的流程基本一致)
+```java
+//处理请求消息
+@Component
+public class PreGatewayFilterFactory extends AbstractGatewayFilterFactory<PreGatewayFilterFactory.Config> {
+
+    public PreGatewayFilterFactory() {
+        super(Config.class);
+    }
+
+    @Override
+    public GatewayFilter apply(Config config) {
+        // grab configuration from Config object
+        return (exchange, chain) -> {
+            //If you want to build a "pre" filter you need to manipulate the
+            //request before calling chain.filter
+            ServerHttpRequest.Builder builder = exchange.getRequest().mutate();
+            //use builder to manipulate the request
+            return chain.filter(exchange.mutate().request(builder.build()).build());
+        };
+    }
+
+    public static class Config {
+        //Put the configuration properties for your filter here
+    }
+
+}
+//处理响应消息
+@Component
+public class PostGatewayFilterFactory extends AbstractGatewayFilterFactory<PostGatewayFilterFactory.Config> {
+
+    public PostGatewayFilterFactory() {
+        super(Config.class);
+    }
+
+    @Override
+    public GatewayFilter apply(Config config) {
+        // grab configuration from Config object
+        return (exchange, chain) -> {
+            return chain.filter(exchange).then(Mono.fromRunnable(() -> {
+                ServerHttpResponse response = exchange.getResponse();
+                //Manipulate the response in some way
+            }));
+        };
+    }
+
+    public static class Config {
+        //Put the configuration properties for your filter here
+    }
+
+}
+```
+3. 自定义全局过滤器，实现GobalFilter接口
+#### 跨域访问
+![跨域配置文件](res/Spring_cloud/6.png)
+
+#### 整合Sentinel流控降级
+
