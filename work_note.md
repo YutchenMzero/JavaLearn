@@ -136,3 +136,25 @@ repositories {
 ### netty
 一个异步事件驱动的网络应用程序框架，用于快速开发可维护的高性能协议服务器和客户端。底端采用TCP/IP协议，本质上是一个NIO框架。
 Netty有两组线程池，一个Boss Group，它专门负责客户端连接，另一个Work Group，专门负责网络读写；
+
+### 其他
+#### 静态变量的自动注入
+1. 采用set方法注入
+```java
+private static JavaMailSenderImpl mailSender;
+
+@Autowired
+public void setMailSender(JavaMailSenderImpl mailSender) {
+    MailUtilsNew.mailSender = mailSender;
+}
+```
+2. 利用`@PostConstruct`注解
+```java
+private static JavaMailSenderImpl mailSender;
+@Autowired
+private JavaMailSenderImpl myMailSender;
+@PostConstruct
+private void init(){
+    mailSender = myMailSender;
+}
+```

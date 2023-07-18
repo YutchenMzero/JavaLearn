@@ -621,15 +621,15 @@ spring:
         properties:
             mail:
                 smtp:
-                auth: true
-                starttls:
-                    enable: true
-                    required: true
-                socketFactory:
-                #使用SMTPS协议465端口
-                    port: 465
-                    class: javax.net.ssl.SSLSocketFactory
-                    fallback: false
+                    auth: true
+                    starttls:
+                        enable: true
+                        required: true
+                    socketFactory:
+                    #使用SMTPS协议465端口
+                        port: 465
+                        class: javax.net.ssl.SSLSocketFactory
+                        fallback: false
 ```
 3. 邮件服务
 spring为发送邮件提供了一个抽象层: 定义了MailMessage 和 MailSender抽象 来描述邮件消息和邮件发送者

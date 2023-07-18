@@ -147,6 +147,32 @@ Java 源代码会经历 编译器优化重排 —> 指令并行重排 —> 内�
 4. isTerminated() 与 isShutdown()
    * `isTerminated()`:当调用 shutdown() 方法后，并且所有提交的任务完成后返回为 true
    * `isShutdown()`:当调用 shutdown() 方法后返回为 true。
+5. 线程池定义
+```java
+ private static Executor getMailExecutor () {
+
+        ThreadPoolTaskExecutor executor = new ThreadPoolTaskExecutor();
+        // 核心线程数3：线程池创建时候初始化的线程数，核数+1
+        executor.setCorePoolSize(3);
+        // 最大线程数15：
+        executor.setMaxPoolSize(15);
+        // 缓冲队列200：
+        executor.setQueueCapacity(100);
+        // 允许线程的空闲时间60秒：
+        executor.setKeepAliveSeconds(60);
+        // 线程池名的前缀：
+        executor.setThreadNamePrefix("mailExecutor-");
+        //线程池对拒绝任务的处理策略：这里采用了CallerRunsPolicy策略，
+        executor.setRejectedExecutionHandler(new ThreadPoolExecutor.CallerRunsPolicy());
+        // 设置线程池关闭的时候等待所有任务都完成再继续销毁其他的Bean
+        executor.setWaitForTasksToCompleteOnShutdown(true);
+        // 设置线程池中任务的等待时间，如果超过这个时候还没有销毁就强制销毁，
+        executor.setAwaitTerminationSeconds(600);
+        executor.initialize();
+        return executor;
+
+    }
+```
 ##### 常见的线程池（不推荐使用）
 1. `FixedThreadPool`：可重用固定线程数的线程池。即corePoolSize 和 maximumPoolSize都被设定为同一个值。
    * FixedThreadPool 使用无界队列 LinkedBlockingQueue，其容量为 Integer.MAX_VALUE，keepAliveTime 也将是一个无效参数，且由于不会拒绝任务，在任务较多时，会导致OMM溢出。
