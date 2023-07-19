@@ -263,9 +263,14 @@ lambda表达式是java8中引入的特性，允许通过表达式来代替功能
 #### 判断
 1. isPresent()：判断optional是否为空，如果空则返回false，否则返回true
 2. ifPresent(Consumer c)：如果optional不为空，则将optional中的对象传给Comsumer函数
+3. ifPresentOrElse(action, emptyAction)：执行两种结果，非空时执行 action，空时执行 emptyAction。
 3. orElse(T other)：如果optional不为空，则返回optional中的对象；如果为null，则返回 other 这个默认值 
-4. orElseGet(Supplier<T> other)：如果optional不为空，则返回optional中的对象；如果为null，则使用Supplier函数生成默认值other
+4. orElseGet(Supplier<T> other)：如果optional不为空，则返回optional中的对象；如果为null，则使用Supplier函数生成默认值other。
 5. orElseThrow(Supplier<X> exception)：如果optional不为空，则返回optional中的对象；如果为null，则抛出Supplier函数生成的异常
+#### 其他工具
+1. filter(Predicate x):可将一个 Lambda 表达式传递给该方法作为条件，如果表达式的结果为 false，则返回一个 EMPTY 的 Optional 对象，否则返回过滤后的 Optional 对象
+2. map() :可以按照一定的规则将原有 Optional 对象转换为一个新的 Optional 对象，原有的 Optional 对象不会更改。（内部会使用ofNullable方法包装返回值）
+3. flatmap():不会使用Optional包装返回值。
 
 ### 序列化
 序列化机制可以将对象转换成字节序列，这些字节序列可以保存在磁盘上，也可以在网络中传输，并允许程序将这些字节序列再次恢复成原来的对象。其中，对象的序列化（Serialize），是指将一个Java对象写入IO流中，对象的反序列化（Deserialize），则是指从IO流中恢复该Java对象。

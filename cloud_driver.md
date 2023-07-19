@@ -723,6 +723,9 @@ public class MailUtils {
 }
 
 ```
+可能的问题与解决：
+    * `javax.net.ssl.SSLHandshakeException: sun.security.validator.ValidatorException: PKIX path building failed`:配置`properties.mail.smtp.ssl.trust = smtp.mxhichina.com`
+    * `440 mail from account doesn't conform with authentication`: 配置from属性与username一致，`messageHelper.setFrom(new InternetAddress(mailFrom));`
 #### 负载均衡
 即尽力将网络流量平均分发到多个服务器上，以提高系统整体的响应速度和可用性。
 ##### 基础知识
