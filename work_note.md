@@ -139,22 +139,6 @@ repositories {
 一个异步事件驱动的网络应用程序框架，用于快速开发可维护的高性能协议服务器和客户端。底端采用TCP/IP协议，本质上是一个NIO框架。
 Netty有两组线程池，一个Boss Group，它专门负责客户端连接，另一个Work Group，专门负责网络读写；
 
-### [Spring Authorization Server](https://docs.spring.io/spring-authorization-server/docs/current/reference/html/)
-提供了OAuth2.1和 OpenID Connect 1.0规范的实现。
-#### OAuth
-[参考](http://www.ruanyifeng.com/blog/2014/05/oauth_2_0.html)
-其参与者分为：
-* RO (resource owner): 资源所有者，对资源具有授权能力的人。也就是登录用户。
-* RS (resource server): 资源服务器，它存储资源，并处理对资源的访问请求。
-* Client: 第三方应用，它获得RO的授权后便可以去访问RO的资源。
-* AS (authorization server): 授权服务器，它认证RO的身份，为RO提供授权审批流程，并最终颁发授权令牌(Access Token)。
-在物理上，AS与RS的功能可以由同一个服务器来提供服务
-
-##### 授权模式
-1. 授权码模式：通过客户端的后台服务器，与"服务提供商"的认证服务器进行互动。相关参数使用JSON发送，且HTTP头信息中明确指定不得缓存。
-2. 简化模式：不通过第三方应用程序的服务器，直接在浏览器中向认证服务器申请令牌，跳过了"授权码"这个步骤。所有步骤在浏览器中完成，令牌对访问者是可见的，且客户端不需要认证。
-3. 密码模式： 用户向客户端提供自己的用户名和密码。客户端使用这些信息，向"服务商提供商"索要授权。
-4. 客户端模式：指客户端以自己的名义，而不是以用户的名义，向"服务提供商"进行认证。严格地说，客户端模式并不属于OAuth框架所要解决的问题
 ### 其他
 #### 静态变量的自动注入
 1. 采用set方法注入
@@ -176,3 +160,41 @@ private void init(){
     mailSender = myMailSender;
 }
 ```
+#### @JsonCreator
+默认情况下，Jackson在反序列化过程中会：
+1. 首先调用反序列化的目标类的无参构造函数，构造一个java对象
+2. 然后调用该类的成员变量的set方法，为该对象的每一个成员变量赋值。
+当时用该注解时，可以自定义反序列化过程，一般用于构造方法和工厂静态方法上
+```java
+ @JsonCreator
+  public PlayerStar3(@JsonProperty("name") String name,
+                     @JsonProperty("age") Integer age,
+                     @JsonProperty("hobbies") String[] hobbies,
+                     @JsonProperty("friends") List<String> friends,
+                     @JsonProperty("salary") Map<String, BigDecimal> salary) {
+    this.name = name;
+    this.age = age;
+    this.hobbies = hobbies;
+    this.friends = friends;
+    this.salary = salary;
+  }
+```
+#### @SneakyThrows
+用于生成try-catch模板。
+```java
+@SneakyThrows
+   public void utf8ToString(byte[] bytes) {
+       return new String(bytes, "UTF-8");
+   }
+ //等同于
+ public void utf8ToString(byte[] bytes) {
+    try {
+      return new String(bytes, "UTF-8");
+    } catch (Exception e) {
+      throw Lombok.sneakyThrow(e);
+    }
+}    
+
+```
+#### @Cleanup
+指定的方法（这个方法需要在注解对象中存在）关闭资源，默认使用 close 方法
