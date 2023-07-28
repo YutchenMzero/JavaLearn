@@ -198,3 +198,16 @@ private void init(){
 ```
 #### @Cleanup
 指定的方法（这个方法需要在注解对象中存在）关闭资源，默认使用 close 方法
+
+#### 时间
+`LocalDateTime.now(ZoneId.of("UTC+00:00"))`获得相对于某个时区的时间
+Date转换为LocalDateTime
+```java
+Date todayDate = new Date();
+
+LocalDateTime ldt = todayDate.toInstant()
+        .atZone( ZoneId.systemDefault() )
+        .toLocalDateTime();
+```
+#### 定时任务
+xxl-job
