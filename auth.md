@@ -108,13 +108,22 @@ http
 5. `UserDetails`：这个接口规范了用户详细信息所拥有的字段，譬如用户名、密码、账号是否过期、是否锁定等。获取当前登录的用户的信息,一般情况是需要在这个接口上面进行扩展，用来对接自己系统的用户
 6. `UserDetailsService`：这个接口只提供一个接口`loadUserByUsername(String username)`，一般情况我们都是通过扩展这个接口来显示获取我们的用户信息，用户登录时传递的用户名和密码也是通过这里这查找出来的用户名和密码进行校验，但是真正的校验不在这里，而是由`AuthenticationManager`以及`AuthenticationProvider`负责的，需要强调的是，如果用户不存在，不应返回NULL，而要抛出异常UsernameNotFoundException.框架中自带一个 User 实现, 但是一般我们需要对 UserDetails 进行定制, 内置的 User 太过简单实际项目无法满足需要。
 7. `AuthenticationManager`：是认证相关的核心接口，也是发起认证的出发点，一般不直接认证，其常用实现类`ProviderManager` 内部会维护一个`List<AuthenticationProvider>`列表，存放多种认证方式
-8. `DaoAuthenticationProvider`：`AuthenticationProvider`最最最常用的一个实现便是`DaoAuthenticationProvider`，它获取用户提交的用户名和密码，比对其正确性，如果正确，返回一个数据库中的用户信息（假设用户信息被保存在数据库中）。
+8. `DaoAuthenticationProvider`：`AuthenticationProvider`最最最常用的一个实现便是`DaoAuthenticationProvider`，它获取用户提交的用户名和密
+码，比对其正确性，如果正确，返回一个数据库中的用户信息（假设用户信息被保存在数据库中）。
 #### 注意事项
 1. `Authentication`的`getCredentials()`与`UserDetails`中的`getPassword()`需要被区分对待，前者是用户提交的密码凭证，后者是用户正确的密码，认证器其实就是对这两者的比对。
 ### 常用注解
 * `@PreAuthorize`:表示访问方法或类在执行之前先判断权限，方法或类级注解。参数为权限表达式
 * `@PostAuthorize`：表示方法或类执行结束后判断权限，同上。
-* 以上注解需要在启动类上开启`@EnableGlobalMethodSecurity(prePostEnabled = true)`
+* 以上两个注解需要在启动类上开启`@EnableGlobalMethodSecurity(prePostEnabled = true)`
+### 使用
 #### 自定义用户及密码获取方式
 1. 创建配置类，指定使用的userDetailsService实现类
 2. 变现对应的实现类，实现以指定的用户名和密码的获取方式返回user
+#### 自定义配置类
+定义配置类继承`AuthorizationServerConfigurerAdapter`方法，并重写其三个configure方法，实现`ClientDetailsServiceConfigurer`,`AuthorizationServerSecurityConfigurer`和`AuthorizationServerEndpointsConfigurer`的配置。
+![配置流程](res/auth_res/%E9%85%8D%E7%BD%AE%E6%B5%81%E7%A8%8B.png)
+#### 注意事项
+1. 基于Role访问，传入时需要前缀`ROLE_`
+
+### 源码流程分析(https://blog.csdn.net/luoxiaomei999/category_11653125.html)

@@ -200,8 +200,9 @@ private void init(){
 指定的方法（这个方法需要在注解对象中存在）关闭资源，默认使用 close 方法
 
 #### 时间
-`LocalDateTime.now(ZoneId.of("UTC+00:00"))`获得相对于某个时区的时间
-Date转换为LocalDateTime
+1. 获得相对于某个时区的时间
+`LocalDateTime.now(ZoneId.of("UTC+00:00"))`
+2. Date转换为LocalDateTime
 ```java
 Date todayDate = new Date();
 
@@ -209,5 +210,55 @@ LocalDateTime ldt = todayDate.toInstant()
         .atZone( ZoneId.systemDefault() )
         .toLocalDateTime();
 ```
+3. 获取当天开始和结束时间
+ ```java
+LocalDateTime startTime = LocalDateTime.of(dateTime.toLocalDate(), LocalTime.MIN);
+LocalDateTime endTime = LocalDateTime.of(dateTime.toLocalDate(), LocalTime.MAX);
+ ```
 #### 定时任务
 xxl-job
+
+### spring 中的一些方法（不知道咋起名字了）
+AnnotationUtils.findAnnotation
+
+### 事务
+声明式事务是Spring官方推荐的使用方式，但在实际应用中，由于声明式事务的粒度最小是在方法级别上的，在使用时很容易一不小心写出一个超大事务(如包含rpc远程调用，缓存更新，消息写入等操作)，导致涉及的数据库被长时间锁定，从而导致高并发场景下的业务失败。这时我们需要进行事务的拆分。
+#### 关于事务失效问题的解决
+在使用@Transactional注解时，最容易出现也是最容易被忽略的失效场景就是类间调用。即类中的A方法调用类中的B方法，而B方法开启了事务，A没有。这是用于采用注解开启事务时，其本质是通过动态代理获取对象。当未开启事务的方法A调用开启事务的方法B时，不会新建对象，自然也就不会开启事务了。为了解决这一问题常用的三种方法是：
+1. 新建Service，将方法B放到新的service中，再通过这个service调用
+2. 为当前的Service注入自己，[spring解决循环依赖的方式](https://mp.weixin.qq.com/s?__biz=MzU0OTE4MzYzMw==&mid=2247545567&idx=2&sn=8478f342befd6d2d84e3e11c635c4952&chksm=fbb1bb21ccc63237a4890e75a3b43a50b69ef88900fac7e784916fdff134cc94a058c192b63f&scene=27)
+```java
+@Service
+public class MyService{
+    @Autowired
+    private MyService myService;
+
+    public void A(){
+        //do()
+        B();
+    }
+    @Transactional
+    public void B(){
+        //doSql()
+    }
+
+}
+```
+3. 动态代理:在该Service类中使用AopContext.currentProxy()获取代理对象
+```java
+@Servcie
+public class ServiceA {
+ 
+   public void save(User user) {
+         queryData1();
+         queryData2();
+         ((ServiceA)AopContext.currentProxy()).doSave(user);
+   }
+ 
+   @Transactional(rollbackFor=Exception.class)
+   public void doSave(User user) {
+       addData1();
+       updateData2();
+    }
+ }
+```

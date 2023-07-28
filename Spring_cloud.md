@@ -405,3 +405,4 @@ public class PostGatewayFilterFactory extends AbstractGatewayFilterFactory<PostG
 
 #### 整合Sentinel流控降级
 
+### [SkyWalking链路跟踪](https://skyapm.github.io/document-cn-translation-of-skywalking/)
