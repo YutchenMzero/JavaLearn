@@ -226,7 +226,7 @@ AnnotationUtils.findAnnotation
 #### 关于事务失效问题的解决
 在使用@Transactional注解时，最容易出现也是最容易被忽略的失效场景就是类间调用。即类中的A方法调用类中的B方法，而B方法开启了事务，A没有。这是用于采用注解开启事务时，其本质是通过动态代理获取对象。当未开启事务的方法A调用开启事务的方法B时，不会新建对象，自然也就不会开启事务了。为了解决这一问题常用的三种方法是：
 1. 新建Service，将方法B放到新的service中，再通过这个service调用
-2. 为当前的Service注入自己，[spring解决循环依赖的方式](https://mp.weixin.qq.com/s?__biz=MzU0OTE4MzYzMw==&mid=2247545567&idx=2&sn=8478f342befd6d2d84e3e11c635c4952&chksm=fbb1bb21ccc63237a4890e75a3b43a50b69ef88900fac7e784916fdff134cc94a058c192b63f&scene=27)
+2. 为当前的Service注入自己，[spring解决循环依赖的方式](https://mp.weixin.qq.com/s?__biz=MzU0OTE4MzYzMw==&mid=2247545567&idx=2&sn=8478f342befd6d2d84e3e11c635c4952&chksm=fbb1bb21ccc63237a4890e75a3b43a50b69ef88900fac7e784916fdff134cc94a058c192b63f&scene=27)：通过三级缓存解决循环依赖问题，但仅限单例。
 ```java
 @Service
 public class MyService{

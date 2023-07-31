@@ -77,6 +77,239 @@
     }
     
 ```
+### 相关配置
+#### Protocol Endpoints
+##### OAuth2 Authorization Endpoint
+用于与资源拥有者(用户)交互并获取授权的节点，必须先对用户的身份进行验证。
+在`OAuth2AuthorizationEndpointConfigurer`中定义了扩展点，可以自定义OAuth2 authorization requests的预处理、后处理和核心处理逻辑，其主要配置如下：
+```java
+@Bean
+public SecurityFilterChain authorizationServerSecurityFilterChain(HttpSecurity http) throws Exception {
+	OAuth2AuthorizationServerConfigurer authorizationServerConfigurer =
+		new OAuth2AuthorizationServerConfigurer();
+	http.apply(authorizationServerConfigurer);
+
+	authorizationServerConfigurer
+		.authorizationEndpoint(authorizationEndpoint ->
+			authorizationEndpoint
+				.authorizationRequestConverter(authorizationRequestConverter)  // (1)
+				.authorizationRequestConverters(authorizationRequestConvertersConsumer) //(2)
+				.authenticationProvider(authenticationProvider) //(3)
+				.authenticationProviders(authenticationProvidersConsumer)  // (4)
+				.authorizationResponseHandler(authorizationResponseHandler) //(5)
+				.errorResponseHandler(errorResponseHandler) //(6)
+				.consentPage("/oauth2/v1/authorize")    //(7)
+		);
+
+	return http.build();
+}
+```
+1. 添加一个`AuthenticationConverter`，用于从`HttpServletRequest`中将一个Oauth2 authorization请求(或同意)提取为`OAuth2AuthorizationCodeRequestAuthenticationToken`或`OAuth2AuthorizationConsentAuthenticationToken`的实例时。
+2. 设置提供对一系列默认和（可选）额外添加的 `AuthenticationConverter` 的访问的 Consumer，其允许添加、删除或自定义特定 `AuthenticationConverter`。
+3. 添加用于验证 `OAuth2AuthorizationCodeRequestAuthenticationToken` 或 `OAuth2AuthorizationConsentAuthenticationToken` 的 `AuthenticationProvider` （核心处理器）
+4. 设置提供对一系列默认和（可选）额外添加的 `AuthenticationProvider` 的访问的 Consumer，其允许添加、删除或自定义特定 `AuthenticationProvider`。
+5. `AuthenticationSuccessHandler`（后处理器）用于处理“经过身份验证的”`OAuth2AuthorizationCodeRequestAuthenticationToken` 并返回 [OAuth2AuthorizationResponse](https://datatracker.ietf.org/doc/html/rfc6749#section-4.1.2)。
+6. `AuthenticationFailureHandler`（后处理器）用于处理 `OAuth2AuthorizationCodeRequestAuthenticationException` 并返回 OAuth2Error response
+7. 如果在授权请求流程期间需要同意，则将资源所有者重定向到的自定义同意页面的 URI。
+
+OAuth2AuthorizationEndpointConfigurer配置OAuth2AuthorizationEndpointFilter并将其注册到 OAuth2 授权服务器SecurityFilterChain @Bean。 OAuth2AuthorizationEndpointFilter是Filter处理 OAuth2 授权请求（和同意）的。
+`OAuth2AuthorizationEndpointFilter`配置有以下默认值：
+
+* `AuthenticationConverter` — 一个由`OAuth2AuthorizationCodeRequestAuthenticationConverter`和`OAuth2AuthorizationConsentAuthenticationConverter`组成的`DelegatingAuthenticationConverter`。
+* `AuthenticationManager` — 一个由`OAuth2AuthorizationCodeRequestAuthenticationProvide`和`OAuth2AuthorizationConsentAuthenticationProvider`组成的`AuthenticationManager`。
+* `AuthenticationSuccessHandler` — 处理“已验证”`OAuth2DeviceAuthorizationRequestAuthenticationToken`并返回`OAuth2DeviceAuthorizationResponse`.
+* `AuthenticationFailureHandler` — 使用`OAuth2Error`与 `OAuth2AuthenticationException`关联并返回`OAuth2Error`响应的内部实现。
+
+###### Customizing Authorization Request Validation
+`OAuth2AuthorizationCodeRequestAuthenticationValidator`是用于验证授权代码授予中使用的特定 OAuth2 授权请求参数的默认验证器。默认实现验证redirect_uri和scope参数。如果验证失败，`OAuth2AuthorizationCodeRequestAuthenticationException`则会抛出异常。
+`OAuth2AuthorizationCodeRequestAuthenticationProvider`提供通过向 `setAuthenticationValidator()` 提供 `Consumer<OAuth2AuthorizationCodeRequestAuthenticationContext>` 类型的自定义身份验证验证器的方式覆盖默认的验证器。
+官方例子：允许在`redirect_uri`参数中使用`localhost`
+```java
+@Bean
+public SecurityFilterChain authorizationServerSecurityFilterChain(HttpSecurity http) throws Exception {
+	OAuth2AuthorizationServerConfigurer authorizationServerConfigurer =
+		new OAuth2AuthorizationServerConfigurer();
+	http.apply(authorizationServerConfigurer);
+
+	authorizationServerConfigurer
+		.authorizationEndpoint(authorizationEndpoint ->
+			authorizationEndpoint
+				.authenticationProviders(configureAuthenticationValidator())
+		);
+
+	return http.build();
+}
+
+private Consumer<List<AuthenticationProvider>> configureAuthenticationValidator() {
+	return (authenticationProviders) ->
+		authenticationProviders.forEach((authenticationProvider) -> {
+			if (authenticationProvider instanceof OAuth2AuthorizationCodeRequestAuthenticationProvider) {
+				Consumer<OAuth2AuthorizationCodeRequestAuthenticationContext> authenticationValidator =
+					// Override default redirect_uri validator
+					new CustomRedirectUriValidator()
+						// Reuse default scope validator
+						.andThen(OAuth2AuthorizationCodeRequestAuthenticationValidator.DEFAULT_SCOPE_VALIDATOR);
+
+				((OAuth2AuthorizationCodeRequestAuthenticationProvider) authenticationProvider)
+					.setAuthenticationValidator(authenticationValidator);
+			}
+		});
+}
+
+static class CustomRedirectUriValidator implements Consumer<OAuth2AuthorizationCodeRequestAuthenticationContext> {
+
+	@Override
+	public void accept(OAuth2AuthorizationCodeRequestAuthenticationContext authenticationContext) {
+		OAuth2AuthorizationCodeRequestAuthenticationToken authorizationCodeRequestAuthentication =
+			authenticationContext.getAuthentication();
+		RegisteredClient registeredClient = authenticationContext.getRegisteredClient();
+		String requestedRedirectUri = authorizationCodeRequestAuthentication.getRedirectUri();
+
+		// Use exact string matching when comparing client redirect URIs against pre-registered URIs
+		if (!registeredClient.getRedirectUris().contains(requestedRedirectUri)) {
+			OAuth2Error error = new OAuth2Error(OAuth2ErrorCodes.INVALID_REQUEST);
+			throw new OAuth2AuthorizationCodeRequestAuthenticationException(error, null);
+		}
+	}
+}
+```
+**注意：**`OAuth2AuthorizationCodeRequestAuthenticationContext`持有`OAuth2AuthorizationCodeRequestAuthenticationToken`, 其中包括 OAuth2 authorization request 的参数.
+##### OAuth2 Token Endpoint
+用于让客户端利用授权或者refresh token获取access token的节点。
+在`OAuth2TokenEndpointConfigurer`中定义了扩展点，可以自定义OAuth2 authorization requests的预处理、后处理和核心处理逻辑，其主要配置如下：
+```java
+@Bean
+public SecurityFilterChain authorizationServerSecurityFilterChain(HttpSecurity http) throws Exception {
+	OAuth2AuthorizationServerConfigurer authorizationServerConfigurer =
+		new OAuth2AuthorizationServerConfigurer();
+	http.apply(authorizationServerConfigurer);
+
+	authorizationServerConfigurer
+		.tokenEndpoint(tokenEndpoint ->
+			tokenEndpoint
+				.accessTokenRequestConverter(accessTokenRequestConverter)  // (1)
+				.accessTokenRequestConverters(accessTokenRequestConvertersConsumer)// (2)
+				.authenticationProvider(authenticationProvider) //(3)
+				.authenticationProviders(authenticationProvidersConsumer)  // (4)
+				.accessTokenResponseHandler(accessTokenResponseHandler) //(5)
+				.errorResponseHandler(errorResponseHandler) //(6)
+		);
+
+	return http.build();
+}
+```
+其配置说明与`OAuth2 Authorization Endpoint`基本一致。
+##### OAuth2 Token Introspection Endpoint
+参数是token，返回一个Json表示与token相关的元信息，包括当前是否有效（未过期，未撤销且有在受保护资源上introspection的权限）
+```java
+authorizationServerConfigurer
+		.tokenIntrospectionEndpoint(tokenIntrospectionEndpoint ->
+			tokenIntrospectionEndpoint
+				.introspectionRequestConverter(introspectionRequestConverter)   
+				.introspectionRequestConverters(introspectionRequestConvertersConsumer) 
+				.authenticationProvider(authenticationProvider) 
+				.authenticationProviders(authenticationProvidersConsumer)   
+				.introspectionResponseHandler(introspectionResponseHandler) 
+				.errorResponseHandler(errorResponseHandler) 
+		);
+
+```
+##### OAuth2 Token Revocation Endpoint
+用于对已授权token或者refresh token的撤销
+```java
+authorizationServerConfigurer
+		.tokenRevocationEndpoint(tokenRevocationEndpoint ->
+			tokenRevocationEndpoint
+				.revocationRequestConverter(revocationRequestConverter) 
+				.revocationRequestConverters(revocationRequestConvertersConsumer)   
+				.authenticationProvider(authenticationProvider) 
+				.authenticationProviders(authenticationProvidersConsumer)   
+				.revocationResponseHandler(revocationResponseHandler)   
+				.errorResponseHandler(errorResponseHandler) 
+		);
+```
+##### OAuth2 Authorization Server Metadata Endpoint
+用于获取认证服务器的相关参数,并以Json的形式返回
+```java
+authorizationServerConfigurer
+		.authorizationServerMetadataEndpoint(authorizationServerMetadataEndpoint ->
+			authorizationServerMetadataEndpoint
+				.authorizationServerMetadataCustomizer(authorizationServerMetadataCustomizer));  
+```
+#### Core Model / Components
+##### RegisteredClient
+表示在授权服务器上注册的客户端。客户端必须先向授权服务器注册，然后才能启动授权流程。在客户端注册期间，客户端被分配一个唯一的客户端标识符client id、（可选）客户端密钥client secret（取决于客户端类型）以及与其唯一客户端标识符关联的元数据。客户端的元数据范围可以从向人类展示的显示字符串（例如客户端名称）到特定于协议流的项目（例如有效重定向 URI 的列表）。
+* 与Spring Security’s OAuth2 Client中的`ClientRegistration`对应
+```java
+RegisteredClient registeredClient = RegisteredClient.withId(UUID.randomUUID().toString())
+	.clientId("client-a")
+	.clientSecret("{noop}secret") //(1)
+	.clientAuthenticationMethod(ClientAuthenticationMethod.CLIENT_SECRET_BASIC)
+	.authorizationGrantType(AuthorizationGrantType.AUTHORIZATION_CODE)
+	.redirectUri("http://127.0.0.1:8080/authorized")
+	.scope("scope-a")
+	.clientSettings(ClientSettings.builder().requireAuthorizationConsent(true).build())
+	.build();
+```
+1. {noop} 代表Spring Security中`NoOpPasswordEncoder`的PasswordEncoder id ，其采用了明文密码
+其包括以下属性
+```java
+public class RegisteredClient implements Serializable {
+	private String id;  
+	private String clientId;    
+	private Instant clientIdIssuedAt;   
+	private String clientSecret;    
+	private Instant clientSecretExpiresAt;  
+	private String clientName;  
+	private Set<ClientAuthenticationMethod> clientAuthenticationMethods;    
+	private Set<AuthorizationGrantType> authorizationGrantTypes;    
+	private Set<String> redirectUris;   
+	private Set<String> postLogoutRedirectUris; 
+	private Set<String> scopes; 
+	private ClientSettings clientSettings;  
+	private TokenSettings tokenSettings;    
+	...
+}
+```
+##### RegisteredClientRepository
+是可以注册新客户端，并查询已存在客户端的中心组件。当遵循特定的协议流时，它被其他组件使用，例如客户端身份验证、授权授予处理、令牌内省、动态客户端注册等。在开发过程中，常用`JdbcRegisteredClientRepository`，其使用JDBC持久存储实例。
+该组件是必须的组件。
+有两种注册方法,一个是通过bean的形式
+```java
+@Bean
+public RegisteredClientRepository registeredClientRepository() {
+	List<RegisteredClient> registrations = ...
+	return new InMemoryRegisteredClientRepository(registrations);
+}
+```
+或者通过`OAuth2AuthorizationServerConfigurer`配置
+```java
+@Bean
+public SecurityFilterChain authorizationServerSecurityFilterChain(HttpSecurity http) throws Exception {
+	OAuth2AuthorizationServerConfigurer authorizationServerConfigurer =
+		new OAuth2AuthorizationServerConfigurer();
+	http.apply(authorizationServerConfigurer);
+
+	authorizationServerConfigurer
+		.registeredClientRepository(registeredClientRepository);
+
+	...
+
+	return http.build();
+}
+```
+##### OAuth2Authorization
+`OAuth2Authorization` 是 OAuth2 授权的表示，它保存与资源所有者授予客户端的授权相关的状态，在 `client_credentials` 授权授予类型的情况下，它是资源所有者或自身的 OAuth2 授权的表示。
+* 与Spring Security’s OAuth2 Client中的` OAuth2AuthorizedClient`对应
+[当前进度](https://docs.spring.io/spring-authorization-server/docs/current/reference/html/core-model-components.html#registered-client-repository)
+
+
+
+
+
+
+
+
 ## [Spring Security](https://www.springcloud.cc/spring-security.html#overall-architecture)
 ### 相关成员
 1. HttpSecurity
