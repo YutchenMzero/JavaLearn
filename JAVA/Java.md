@@ -237,9 +237,105 @@ lambda表达式是java8中引入的特性，允许通过表达式来代替功能
 #### 函数式接口
 如果一个接口只有一个抽象方法，该接口为函数式接口，使用lambda表达式将匹配到该方法上。可以用`@FunctionnalInterface`注解。
 1. Consumer:接受一个参数但无返回值
+```java
+public interface Consumer<T> {
+
+    void accept(T t);
+
+    default Consumer<T> andThen(Consumer<? super T> after) {
+        Objects.requireNonNull(after);
+        return (T t) -> { accept(t); after.accept(t); };
+    }
+}
+```
 2. Supplier：无参数，有返回值
+```java
+public interface Supplier<T> {
+
+    /**
+     * Gets a result.
+     *
+     * @return a result
+     */
+    T get();
+}
+```
 3. Function：接受一个参数，返回一个结果
+```java
+public interface Predicate<T> {
+
+
+    boolean test(T t);
+
+    default Predicate<T> and(Predicate<? super T> other) {
+        Objects.requireNonNull(other);
+        return (t) -> test(t) && other.test(t);
+    }
+
+
+    default Predicate<T> negate() {
+        return (t) -> !test(t);
+    }
+
+    default Predicate<T> or(Predicate<? super T> other) {
+        Objects.requireNonNull(other);
+        return (t) -> test(t) || other.test(t);
+    }
+
+
+    static <T> Predicate<T> isEqual(Object targetRef) {
+        return (null == targetRef)
+                ? Objects::isNull
+                : object -> targetRef.equals(object);
+    }
+
+    /**
+     * Returns a predicate that is the negation of the supplied predicate.
+     * This is accomplished by returning result of the calling
+     * {@code target.negate()}.
+     *
+     * @param <T>     the type of arguments to the specified predicate
+     * @param target  predicate to negate
+     *
+     * @return a predicate that negates the results of the supplied
+     *         predicate
+     *
+     * @throws NullPointerException if target is null
+     *
+     * @since 11
+     */
+    @SuppressWarnings("unchecked")
+    static <T> Predicate<T> not(Predicate<? super T> target) {
+        Objects.requireNonNull(target);
+        return (Predicate<T>)target.negate();
+    }
+}
+```
 4. Predicate：接收参数，返回布尔类型结果
+```java
+public interface Function<T, R> {
+
+
+    R apply(T t);
+
+
+    default <V> Function<V, R> compose(Function<? super V, ? extends T> before) {
+        Objects.requireNonNull(before);
+        return (V v) -> apply(before.apply(v));
+    }
+
+
+    default <V> Function<T, V> andThen(Function<? super R, ? extends V> after) {
+        Objects.requireNonNull(after);
+        return (T t) -> after.apply(apply(t));
+    }
+
+  
+    static <T> Function<T, T> identity() {
+        return t -> t;
+    }
+}
+```
 #### 方法引用
 是Lambda表达式的一种简写形式。若Lambda表达式方法体中只是调用一个特定的已存在的方法，则可以使用方法引用。常见形式：
 * 对象::实例方法
@@ -259,6 +355,8 @@ lambda表达式是java8中引入的特性，允许通过表达式来代替功能
 
 #### 注意事项
 1. stream.collect(Collectors.toList())要是没有元素，会返回一个空的list
+
+
 ### Optional
 为了解决NPE(空指针异常)，其可包含空值或非空值。
 #### 创建
