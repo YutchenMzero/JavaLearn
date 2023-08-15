@@ -472,3 +472,56 @@ serialVersionUID代表序列化的版本，通过定义类的序列化版本，�
 #### 使用
 1. Guava提供的
 2. Redis 中的布隆过滤器
+
+### 泛型
+其用法主要分为三种：
+1. 泛型类：`class MyArrayList<E>`
+2. 泛型方法 :`public <E> void addAll(ArrayList<E> list)`
+3. 泛型接口:`public interface List<E>`
+以下给出一个在工作中使用泛型提取公共代码逻辑的例子
+```java
+  @Override
+    public <T> FxiaokeCrmResultVO createObject(Supplier<? extends FxiaokeCrmDataObjectDTO> supplier, Class<T> clazz) {
+        FxiaokeCrmTokenVO tokenVO = getAccessToken();
+        Object obj = supplier.get();
+        String apiName = "";
+        String api = "********";
+        if (clazz.isAssignableFrom(CRMDeviceObjectDTO.class)) {
+            CRMDeviceObjectDTO temp = (CRMDeviceObjectDTO) obj;
+            apiName = "AAA";
+            temp.setDataObjectApiName(apiName);
+            temp.setOwner(List.of(fxiaokeProperties.getCurrentOpenUserId()));
+            obj = temp;
+            api = fxiaokeProperties.getUrl() + fxiaokeProperties.getCreateCustomerApi();
+        }
+        if (clazz.isAssignableFrom(CRMSatisfactionObjDTO.class)) {
+            CRMSatisfactionObjDTO temp = (CRMSatisfactionObjDTO) obj;
+            apiName = "BBB";
+            temp.setDataObjectApiName(apiName);
+            temp.setOwner(List.of(fxiaokeProperties.getCurrentOpenUserId()));
+            obj = temp;
+        }
+        T objectDTO = (T) obj;
+        CRMDataDTO<T> dataDTO = new CRMDataDTO<>();
+        dataDTO.setObject_data(objectDTO);
+        CRMCreateDataDTO<T> dto = new CRMCreateDataDTO<>();
+        dto.setCorpId(tokenVO.getCorpId());
+        dto.setCorpAccessToken(tokenVO.getCorpAccessToken());
+        dto.setCurrentOpenUserId(fxiaokeProperties.getCurrentOpenUserId());
+        dto.setData(dataDTO);
+        String uri = fxiaokeProperties.getUrl() + api;
+        Long startTime = System.currentTimeMillis();
+        String data = HttpUtil.post(uri, JSONUtil.toJsonStr(dto));
+        Long endTime = System.currentTimeMillis();
+        FxiaokeCrmResultVO resultVO = JSONUtil.toBean(data, FxiaokeCrmResultVO.class);
+        addCrmLog(uri, apiName, JSONUtil.toJsonStr(objectDTO),
+                resultVO, endTime - startTime);
+        return resultVO;
+    }
+
+    //调用,若不用泛型，则对每一种类型需要单独的创建类
+    @Override
+    public FxiaokeCrmResultVO satisfactionEvaluation(CRMSatisfactionObjDTO satisfactionObjDTO) {
+        return createObject(() -> satisfactionObjDTO, CRMSatisfactionObjDTO.class);
+    }
+```
