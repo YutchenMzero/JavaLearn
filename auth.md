@@ -84,6 +84,24 @@ cookies在浏览器是共享的，而且不论访问哪个网页，浏览器每�
 
 用户向客户端提供自己的用户名和密码。客户端使用这些信息，向"服务商提供商"索要授权。
 
+* 此授权类型仅在其他流不允许时，启动它才允许它可行的。
+
+![密码模式](res/auth_res/%E5%AF%86%E7%A0%81%E6%A8%A1%E5%BC%8F.png)
+
+1. Request格式
+
+* grant_type
+         REQUIRED.  Value MUST be set to "password".
+
+* username
+         REQUIRED.  The resource owner username.
+
+* password
+         REQUIRED.  The resource owner password.
+
+* scope
+         OPTIONAL.  The scope of the access request
+
 ##### 客户端模式
 
 指客户端以自己的名义，而不是以用户的名义，向"服务提供商"进行认证。严格地说，客户端模式并不属于OAuth框架所要解决的问题

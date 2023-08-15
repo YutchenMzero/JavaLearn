@@ -40,6 +40,14 @@ CopyOnWriteArrayList允许线程并发访问读操作，这个时候是没有加
 ```
 #### 其他
 1. 需要使用线程安全的集合类，也建议将线程不安全的集合类包装成线程安全集合类的方式（使用Collection提供的synchronizedXXX()方法，如synchronizedMap），而不是直接使用这些古老的API（Vector，HashTable）
+2. map的初始化
+```java
+Map<Character,Character> map = new HashMap<>(){{
+           put(')','(');
+           put(']','[');
+           put('}','{');
+        }};
+```
 ### 2. equals()与==   
 1. `==`针对基本数据类型时，比较的是值是否相同，引用数据类型时是比较引用地址是否相同。
 2. `equals()`属于Object中的方法，所有类都可重写该方法，但基本数据类型不可使用。
@@ -262,6 +270,32 @@ public interface Supplier<T> {
 ```
 3. Function：接受一个参数，返回一个结果
 ```java
+public interface Function<T, R> {
+
+
+    R apply(T t);
+
+
+    default <V> Function<V, R> compose(Function<? super V, ? extends T> before) {
+        Objects.requireNonNull(before);
+        return (V v) -> apply(before.apply(v));
+    }
+
+
+    default <V> Function<T, V> andThen(Function<? super R, ? extends V> after) {
+        Objects.requireNonNull(after);
+        return (T t) -> after.apply(apply(t));
+    }
+
+  
+    static <T> Function<T, T> identity() {
+        return t -> t;
+    }
+}
+```
+4. Predicate：接收参数，返回布尔类型结果
+```java
+
 public interface Predicate<T> {
 
 
@@ -308,31 +342,6 @@ public interface Predicate<T> {
     static <T> Predicate<T> not(Predicate<? super T> target) {
         Objects.requireNonNull(target);
         return (Predicate<T>)target.negate();
-    }
-}
-```
-4. Predicate：接收参数，返回布尔类型结果
-```java
-public interface Function<T, R> {
-
-
-    R apply(T t);
-
-
-    default <V> Function<V, R> compose(Function<? super V, ? extends T> before) {
-        Objects.requireNonNull(before);
-        return (V v) -> apply(before.apply(v));
-    }
-
-
-    default <V> Function<T, V> andThen(Function<? super R, ? extends V> after) {
-        Objects.requireNonNull(after);
-        return (T t) -> after.apply(apply(t));
-    }
-
-  
-    static <T> Function<T, T> identity() {
-        return t -> t;
     }
 }
 ```
