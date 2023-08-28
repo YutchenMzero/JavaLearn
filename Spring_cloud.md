@@ -403,6 +403,12 @@ public class MyRoutePredicateFactory extends AbstractRoutePredicateFactory<MyRou
     public MyRoutePredicateFactory() {
         super(Config.class);
     }
+    
+  //读取配置文件的参数值，赋值到配置类中的属性上
+    public List<String> shortcutFieldOrder() {
+        //顺序必须与yml文件中的配置顺序对应
+        return Arrays.asList("minAge", "maxAge");
+    }
 
     @Override
     public Predicate<ServerWebExchange> apply(Config config) {
