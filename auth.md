@@ -780,7 +780,7 @@ http
 
 ### [核心组件](https://baijiahao.baidu.com/s?id=1711889305762686065&wfr=spider&for=pc)
 
-1. `SecurityContextHolder`：它持有的是安全上下文（security context）的信息。当前操作的用户是谁，该用户是否已经被认证，他拥有哪些角色权等等，这些都被保存在`SecurityContextHolde`r中。S`ecurityContextHolde`r默认使用ThreadLocal 策略来存储认证信息。看到ThreadLocal 也就意味着，这是一种与线程绑定的策略。
+1. `SecurityContextHolder`：它持有的是安全上下文（security context）的信息。当前操作的用户是谁，该用户是否已经被认证，他拥有哪些角色权等等，这些都被保存在`SecurityContextHolde`r中。`SecurityContextHolder`默认使用ThreadLocal 策略来存储认证信息。看到ThreadLocal 也就意味着，这是一种与线程绑定的策略。
 2. `SecurityContext`：安全上下文，主要持有Authentication对象，如果用户未鉴权，那Authentication对象将会是空的，可以使用SecurityContextHolder.getContext静态方法获取
 3. `Authentication`：鉴权对象，该对象主要包含了用户的详细信息（UserDetails）和用户鉴权时所需要的信息，如用户提交的用户名密码、Remember-me Token，或者digest hash值等
 4. `GrantedAuthority`：该接口表示了当前用户所拥有的权限（或者角色）信息。鉴权时并不会使用到该对象。
@@ -816,4 +816,7 @@ http
 
 1. 基于Role访问，传入时需要前缀`ROLE_`
 
-### 源码流程分析(<https://blog.csdn.net/luoxiaomei999/category_11653125.html>)
+### [源码流程分析](https://blog.csdn.net/luoxiaomei999/category_11653125.html)
+
+
+[迁移指南](https://github.com/spring-projects/spring-security/wiki/OAuth-2.0-Migration-Guide)

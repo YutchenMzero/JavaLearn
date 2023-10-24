@@ -357,6 +357,28 @@ if (arrayNode.isArray() && !arrayNode.isEmpty()) {
 
 ```
 
+#### assert断言
+
+assertion用于保证程序最基本、关键的正确性。assertion检查通常在开发和测试时开启。为了提高性能，在软件发布后，assertion检查通常是关闭的。
+
+**语法：**
+`assert <boolean表达式>`
+`assert <boolean表达式>:<错误信息表达式>`
+当boolean表达式为false时，会抛出异常(并输出错误信息表达式)
+**开启**
+设置jvm参数，即VM options选项为`-ea`或`-enableassertions`
+
+#### MySQL数据库隐式转换规则
+
+1. 数值类型的隐式转换：除非两个都是整数，否则作为浮点数比较
+    * 若字符串不能转换为数值，则返回0
+    * 布尔值中，true转换为1，false转换为0
+2. 日期类型：
+    * 日期和时间比较时，日期会转为时间，其时间部分为`00:00:00`
+    * 若字符串不能转为日期，则返回NULL
+3. 其他：
+    * 除了相等比较符，所有涉及NULL的运算结果都是NULL
+    * 若不与数字比较，则将十六进制视为二进制字符串
 
 ### spring 中的一些方法（不知道咋起名字了）
 
@@ -422,7 +444,7 @@ public interface ServerWebExchange {
 
     // 日志前缀属性的KEY，值为org.springframework.web.server.ServerWebExchange.LOG_ID
     // 可以理解为 attributes.set("org.springframework.web.server.ServerWebExchange.LOG_ID","日志前缀的具体值");
-    // 作用是打印日志的时候会拼接这个KEY对饮的前缀值，默认值为""
+    // 作用是打印日志的时候会拼接这个KEY对应的前缀值，默认值为""
     String LOG_ID_ATTRIBUTE = ServerWebExchange.class.getName() + ".LOG_ID";
     String getLogPrefix();
 
@@ -674,9 +696,242 @@ return chain.filter(exchange.mutate().response(responseDecorator).build();
  **补充属性名和含义**
 
 #### Filter
+
 在 Web 应用中，可以部署多个 Filter，若这些 Filter 都拦截同一目标资源，则它们就组成了一个 Filter 链（也称过滤器链）。过滤器链中的每个过滤器负责特定的操作和任务，客户端的请求在这些过滤器之间传递，直到传递给目标资源。
+
 1. 只要在 Filter.doFilter 方法中调用 FilterChain.doFilter 方法的语句前后增加某些程序代码，这样就可以在 Servlet 进行响应前后实现某些特殊功能。
 2. 如果在 Filter.doFilter 方法中没有调用 FilterChain.doFilter 方法，则目标 Servlet 的 service 方法不会被执行，这样通过 Filter 就可以阻止某些非法的访问请求。
-3.  Filter.doFilter 方法中不能直接调用 Servlet 的 service 方法，而是调用 FilterChain.doFilter 方法来激活目标 Servlet 的 service 方法，FilterChain 对象时通过 Filter.doFilter 方法的参数传递进来的。
+3. Filter.doFilter 方法中不能直接调用 Servlet 的 service 方法，而是调用 FilterChain.doFilter 方法来激活目标 Servlet 的 service 方法，FilterChain 对象时通过 Filter.doFilter 方法的参数传递进来的。
 
 ### 响应式编程
+
+### SpringBoot监听器
+
+作为Spring提供的扩展点，可以自定义对事件(ApplicationEvent及其子类)的监听处理。事件携带一个Object对象。可以被发布，事件监听者监听到这个事件后，出发自定义逻辑(操作Object对象)
+
+* 注意：
+
+1. spring事件是同步的，这意味着发布者线程将阻塞，直到所有监听都完成对事件的处理为止。
+2. 当 Spring 发布一个事件时，会调用所有能处理这个事件的事件监听器方法，可以使用 @Order 注解来指定事件监听器方法的优先级。
+
+#### 基础类
+
+1. 事件类
+
+    ```java
+    /*  
+    * 顶层类
+    */
+    public class EventObject implements java.io.Serializable {
+
+        private static final long serialVersionUID = 5516075349620653480L;
+
+        /**
+         * The object on which the Event initially occurred.
+         */
+        protected transient Object source;
+
+        /**
+         * Constructs a prototypical Event.
+         *
+         * @param source the object on which the Event initially occurred
+         * @throws IllegalArgumentException if source is null
+         */
+        public EventObject(Object source) {
+            if (source == null)
+                throw new IllegalArgumentException("null source");
+
+            this.source = source;
+        }
+
+        /**
+         * The object on which the Event initially occurred.
+         *
+         * @return the object on which the Event initially occurred
+         */
+        public Object getSource() {
+            return source;
+        }
+
+        /**
+         * Returns a String representation of this EventObject.
+         *
+         * @return a String representation of this EventObject
+         */
+        public String toString() {
+            return getClass().getName() + "[source=" + source + "]";
+        }
+    }
+    /*  
+    * ApplicationEvent
+    */
+    public abstract class ApplicationEvent extends EventObject {
+        private static final long serialVersionUID = 7099057708183571937L;
+        private final long timestamp;
+
+        public ApplicationEvent(Object source) {
+            super(source);
+            this.timestamp = System.currentTimeMillis();
+        }
+
+        public ApplicationEvent(Object source, Clock clock) {
+            super(source);
+            this.timestamp = clock.millis();
+        }
+
+        public final long getTimestamp() {
+            return this.timestamp;
+        }
+    }
+    ```
+
+2. 监听类
+
+    ```java
+    /*  
+    * 顶层类
+    */
+    public interface EventListener {
+    }
+    /*  
+    * ApplicationListener
+    */
+    // 该注解用于检查接口是否满足函数式接口的定义：仅包含一个抽象方法
+    @FunctionalInterface
+    public interface ApplicationListener<E extends ApplicationEvent> extends EventListener {
+        void onApplicationEvent(E event);
+
+        static <T> ApplicationListener<PayloadApplicationEvent<T>> forPayload(Consumer<T> consumer) {
+            return (event) -> {
+                consumer.accept(event.getPayload());
+            };
+        }
+    }
+    ```
+
+#### 监听的实现
+
+1. 编写监听器实现类
+
+    ```java
+    @Component
+    public class MyApplicationListener implements ApplicationListener<ApplicationEvent> {
+    @Override
+    public void onApplicationEvent(ApplicationEvent applicationEvent) {
+        System.out.println("收到容器中的事件："+applicationEvent);
+    }
+    ```
+
+2. 注解形式
+
+    ```java
+    @Service
+    public class UserService {
+
+    //通过注解来实现普通的业务方法实现监听ApplicationEvent类型的事件
+    @EventListener(classes = {ApplicationEvent.class})
+    public void listen(ApplicationEvent event){
+        System.out.println("UserService ...监听到的事件:"+event);
+    }
+    ```
+
+#### 事件发布
+
+使用ApplicationContext的 `publishEvent` 方法来发布事件
+
+### Spring MVC
+
+#### RequestContextHolder
+
+持有上下文的Request容器，可以用去获取到当前请求的request对象
+
+```java
+    public abstract class RequestContextHolder  {
+
+        private static final boolean jsfPresent = ClassUtils.isPresent("javax.faces.context.FacesContext", RequestContextHolder.class.getClassLoader());
+
+        private static final ThreadLocal<RequestAttributes> requestAttributesHolder = new NamedThreadLocal<>("Request attributes");
+
+        private static final ThreadLocal<RequestAttributes> inheritableRequestAttributesHolder = new NamedInheritableThreadLocal<>("Request context");
+
+
+        public static void resetRequestAttributes() {
+            requestAttributesHolder.remove();
+            inheritableRequestAttributesHolder.remove();
+        }
+
+
+        public static void setRequestAttributes(@Nullable RequestAttributes attributes) {
+            setRequestAttributes(attributes, false);
+        }
+
+
+        public static void setRequestAttributes(@Nullable RequestAttributes attributes, boolean inheritable) {
+            if (attributes == null) {
+                resetRequestAttributes();
+            }
+            else {
+                if (inheritable) {
+                    inheritableRequestAttributesHolder.set(attributes);
+                    requestAttributesHolder.remove();
+                }
+                else {
+                    requestAttributesHolder.set(attributes);
+                    inheritableRequestAttributesHolder.remove();
+                }
+            }
+        }
+
+        //获取当前线程中的RequestAttributes
+        @Nullable
+        public static RequestAttributes getRequestAttributes() {
+            RequestAttributes attributes = requestAttributesHolder.get();
+            if (attributes == null) {
+                attributes = inheritableRequestAttributesHolder.get();
+            }
+            return attributes;
+        }
+
+        //获取当前线程中的RequestAttributes，当前没有的话，会返回当前jsf的
+        public static RequestAttributes currentRequestAttributes() throws IllegalStateException {
+            RequestAttributes attributes = getRequestAttributes();
+            if (attributes == null) {
+                if (jsfPresent) {
+                    attributes = FacesRequestAttributesFactory.getFacesRequestAttributes();
+                }
+                if (attributes == null) {
+                    throw new IllegalStateException("No thread-bound request found: " +
+                            "Are you referring to request attributes outside of an actual web request, " +
+                            "or processing a request outside of the originally receiving thread? " +
+                            "If you are actually operating within a web request and still receive this message, " +
+                            "your code is probably running outside of DispatcherServlet: " +
+                            "In this case, use RequestContextListener or RequestContextFilter to expose the current request.");
+                }
+            }
+            return attributes;
+        }
+
+
+        /**
+         * Inner class to avoid hard-coded JSF dependency.
+         */
+        private static class FacesRequestAttributesFactory {
+
+            @Nullable
+            public static RequestAttributes getFacesRequestAttributes() {
+                FacesContext facesContext = FacesContext.getCurrentInstance();
+                return (facesContext != null ? new FacesRequestAttributes(facesContext) : null);
+            }
+        }
+
+    }
+```
+
+1. 实现原理： 使用ThreadLocal保存当前线程下的`request`，而`RequestAttributes`属性是在`FrameworkServlet`的`processRequest`方法中通过调用`initContextHolders`方法传入到`RequestContextHolder`中的，注意，实际上传入的是`ServletRequestAttributes`
+2. 使用：一般将得到的`RequestAttributes`转为`ServletRequestAttributes`，以获取`session`、`request`、`response`等属性
+    RequestAttributes与ServletRequestAttributes
+    ![Alt text](res/wore_note_res/servletRequestAributes.png)
+
+#### HttpservletRequest和HttpServletResponse
+
+`javax.servlet.http`包中定义的接口，用于表示请求和响应，可以通过其获取到请求和响应中的属性。
