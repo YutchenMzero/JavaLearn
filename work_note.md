@@ -39,7 +39,7 @@ class DemoControllerTest {
 
     @BeforeEach
     void setUp() {
-        mockMvc = MockMvcBuilders.standaloneSetup(DemoController).build();
+        mockMvc = MockMvcBuilders.standaloneSetup(demoController).build();
     }
 
     @Test
@@ -115,6 +115,67 @@ class DemoControllerTest {
 #### 条件构造器Wrapper
 
 可以使用wrapper构造较为复杂的SQL;[参考资料](https://blog.csdnne.net/qq_39715000/article/details/120090033)
+
+#### sql注入器（增强BaseMapper方法）
+
+1. 自定义接口，并继承BaseMapper,添加自定义的方法
+
+    ```java
+    public interface MyBaseMapper<T> extends BaseMapper<T> {
+        List<T> findAll();
+    }
+    ```
+
+2. 定义SQL类，需继承AbstractMethod
+
+    ```java
+    public class FindAll extends AbstractMethod {
+
+        public FindAll() {
+            super("findAll");//要与mapper中定义的方法名一致
+        }
+
+        @Override
+        public MappedStatement injectMappedStatement(Class<?> mapperClass, Class<?> modelClass, TableInfo tableInfo) {
+            SqlMethod sqlMethod = SqlMethod.SELECT_LIST;
+            //定义SQL语句
+            String sql = String.format(sqlMethod.getSql(), this.sqlFirst(), this.sqlSelectColumns(tableInfo, true),
+                    tableInfo.getTableName(), this.sqlWhereEntityWrapper(true, tableInfo), this.sqlOrderBy(tableInfo),
+                    this.sqlComment());
+            //写法基本固定，唯一需要改变的是sql
+            SqlSource sqlSource = this.languageDriver.createSqlSource(this.configuration, sql, modelClass);
+            //固定写法
+            return this.addSelectMappedStatementForTable(mapperClass, sqlSource, tableInfo);
+        }
+
+    }
+    ```
+
+3. 注入到容器中，需继承DefaultSqlInjector
+
+    ```java
+    @Component
+    public class DataScopeSqlInjector extends DefaultSqlInjector {
+
+        @Override
+        public List<AbstractMethod> getMethodList(Class<?> mapperClass, TableInfo tableInfo) {
+            //将父类的方法加入，防止其丢失
+            List<AbstractMethod> methodList = super.getMethodList(mapperClass, tableInfo);
+            //添加自定义的方法类
+            methodList.add(new FindAll());
+            return methodList;
+        }
+
+    }
+    ```
+
+#### 重要成员类
+
+##### SelectBody实现类
+该类代表了查询的主体部分
+
+1. PlainSelect：表示简单的select查询语句
+2. ValuesStatement：表示值数组或参考变量集合。它可以在 INSERT, REPLACE 或 MERGE 语句中与列名一起使用来插入或替换新数据
 
 #### 其他
 
@@ -379,6 +440,19 @@ assertion用于保证程序最基本、关键的正确性。assertion检查通�
 3. 其他：
     * 除了相等比较符，所有涉及NULL的运算结果都是NULL
     * 若不与数字比较，则将十六进制视为二进制字符串
+
+#### 网络传输解码
+
+```java
+    String param = "4%2c3%2c2";
+    String decode = URLDecoder.decode(param, StandardCharsets.UTF_8);
+    List<String> params = Arrays.asList(decode.split(","));
+    System.out.println(params);
+```
+
+#### MyBatis mappper.xml相关
+
+1. `<if test="">`标签中，使用的时OGNL语法规则，即可使用Java中的语法规则进行判断
 
 ### spring 中的一些方法（不知道咋起名字了）
 
@@ -704,6 +778,7 @@ return chain.filter(exchange.mutate().response(responseDecorator).build();
 3. Filter.doFilter 方法中不能直接调用 Servlet 的 service 方法，而是调用 FilterChain.doFilter 方法来激活目标 Servlet 的 service 方法，FilterChain 对象时通过 Filter.doFilter 方法的参数传递进来的。
 
 ### 响应式编程
+[webflux](https://docs.spring.io/spring-framework/reference/web/webflux.html)
 
 ### SpringBoot监听器
 
