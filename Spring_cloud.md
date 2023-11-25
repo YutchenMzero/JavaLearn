@@ -484,7 +484,57 @@ public class PostGatewayFilterFactory extends AbstractGatewayFilterFactory<PostG
     }
 
 }
+
+//请求体修改：参考官方提供的ModifyRequestBodyGatewayFilterFactory
+@Override
+@SuppressWarnings("unchecked")
+public GatewayFilter apply(Config config) {
+return new GatewayFilter() {
+    @Override
+    public Mono<Void> filter(ServerWebExchange exchange, GatewayFilterChain chain) {
+      Class inClass = config.getInClass();
+      ServerRequest serverRequest = ServerRequest.create(exchange, messageReaders);
+  
+      // TODO: 主要可以重写这里的逻辑，针对请求头、请求体中的内容进行定制化
+      Mono<?> modifiedBody = serverRequest.bodyToMono(inClass)
+          .flatMap(originalBody -> config.getRewriteFunction().apply(exchange, originalBody))
+          .switchIfEmpty(Mono.defer(() -> (Mono) config.getRewriteFunction().apply(exchange, null)));
+  
+      BodyInserter bodyInserter = BodyInserters.fromPublisher(modifiedBody, config.getOutClass());
+      HttpHeaders headers = new HttpHeaders();
+      headers.putAll(exchange.getRequest().getHeaders());
+  
+      // the new content type will be computed by bodyInserter
+      // and then set in the request decorator
+      headers.remove(HttpHeaders.CONTENT_LENGTH);
+  
+      // if the body is changing content types, set it here, to the bodyInserter
+      // will know about it
+              // 注意在处理的过程中要进行异常的捕获或者全局处理，提升体验以及一些不必要的麻烦
+      if (config.getContentType() != null) {
+        headers.set(HttpHeaders.CONTENT_TYPE, config.getContentType());
+        }
+      CachedBodyOutputMessage outputMessage = new CachedBodyOutputMessage(exchange, headers);
+      return bodyInserter.insert(outputMessage, new BodyInserterContext())
+          // .log("modify_request", Level.INFO)
+          .then(Mono.defer(() -> {
+            ServerHttpRequest decorator = decorate(exchange, headers, outputMessage);
+            return chain.filter(exchange.mutate().request(decorator).build());
+          })).onErrorResume((Function<Throwable, Mono<Void>>) throwable -> release(exchange,
+              outputMessage, throwable));
+      }
+  
+    @Override
+    public String toString() {
+      return filterToStringCreator(ModifyRequestBodyGatewayFilterFactory.this)
+          .append("Content type", config.getContentType()).append("In class", config.getInClass())
+          .append("Out class", config.getOutClass()).toString();
+    }
+  };
+}
+
 ```
+
 
 3. 自定义全局过滤器，实现GobalFilter接口
 
@@ -495,3 +545,4 @@ public class PostGatewayFilterFactory extends AbstractGatewayFilterFactory<PostG
 #### 整合Sentinel流控降级
 
 ### [SkyWalking链路跟踪](https://skyapm.github.io/document-cn-translation-of-skywalking/)
+

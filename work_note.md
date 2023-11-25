@@ -1010,3 +1010,99 @@ return chain.filter(exchange.mutate().response(responseDecorator).build();
 #### HttpservletRequest和HttpServletResponse
 
 `javax.servlet.http`包中定义的接口，用于表示请求和响应，可以通过其获取到请求和响应中的属性。
+
+
+### 自定义注解完成无侵入式的功能增强
+
+#### 元注解
+
+用于注解其他注解的注解。元注解提供了有关注解本身的信息。
+
+##### @Retention 保留策略
+
+用于指定注解的保留策略，即注解在什么时候会被丢弃
+|                      取值|                                        含义|
+|-------------------------|--------------------------------------------|
+|`RetentionPolicy.SOURCE`|注解仅保留在源代码中，不包含在编译后的字节码文件中|
+|`RetentionPolicy.CLASS`|注解保留在编译后的字节码文件中，但在运行时不会被加载|
+|`RetentionPolicy.RUNTIME`|注解在运行时保留，可以通过反射读取|
+
+##### @Target 适用目标
+
+用于指定注解可以应用的程序元素类型,其取值可以组合使用
+
+|                      取值|                   含义|
+|-------------------------|-----------------------|
+|`ElementType.ANNOTATION_TYPE`|可以用于注解其他注解|
+|`ElementType.CONSTRUCTOR`|可以用于构造方法|
+|`ElementType.FIELD`|可以用于字段(成员变量)|
+|`ElementType.LOCAL_VARIABLE`|可以用于局部变量|
+|`ElementType.METHOD`|可以用于方法|
+|`ElementType.PARAMETER`|可以用于方法的参数|
+|`ElementType.TYPE`|可以用于类、接口、枚举等|
+
+##### @Documented 生成文档
+
+用于指定注解是否应该包含在生成的 Java 文档中
+
+##### @Inherited 继承性
+
+用于指定注解是否具有继承性。如果一个类使用了被 `@Inherited` 修饰的注解，其子类是否也继承该注解。
+
+##### @Repeatable 可重复注解
+
+允许在同一程序元素上多次使用同一个注解
+
+#### 获取注解信息
+
+##### 获取指定类上的注解信息
+
+```java
+public class Main {
+
+    // getDeclaredAnnotations 获取所有的注解
+    // getDeclaredAnnotation 获取指定的注解
+    public static void main(String[] args) throws NoSuchMethodException, NoSuchFieldException {
+        Class<Test> testClazz = Test.class;
+
+        // 获取(类、接口、枚举、注解)上注解的
+        AnnotationForClass annotationForClass = testClazz.getDeclaredAnnotation(AnnotationForClass.class);
+        System.out.println("类上的注解的值\t" + annotationForClass.value());
+
+        // 获取类中构造器的注解
+        Constructor<Test> constructor = testClazz.getConstructor();
+        AnnotationForConstructor annotationForConstructor = constructor.getDeclaredAnnotation(AnnotationForConstructor.class);
+        System.out.println("类中构造器的注解的值\t" + annotationForConstructor.value());
+
+        // 获取类中字段的注解
+        Field nameField = testClazz.getDeclaredField("name");
+        AnnotationForField annotationForField = nameField.getDeclaredAnnotation(AnnotationForField.class);
+        System.out.println("类中字段的注解的值\t" + annotationForField.value());
+
+        // 获取类中方法的注解
+        Method getNameMethod = testClazz.getDeclaredMethod("getName");
+        AnnotationForMethod annotationForMethod = getNameMethod.getDeclaredAnnotation(AnnotationForMethod.class);
+        System.out.println("类中方法的注解的值\t" + annotationForMethod.value());
+
+        // 获取方法上参数的注解
+        Method setNameMethod = testClazz.getDeclaredMethod("setName", String.class);
+        AnnotationForParam annotationForParam = setNameMethod.getDeclaredAnnotation(AnnotationForParam.class);
+        System.out.println("类中方法的参数的注解的值\t" + annotationForParam.value());
+    }
+}
+
+```
+
+##### 使用AnnotationUtils
+
+Spring 框架提供的一个工具类，用于处理 Java 注解的常见任务。它提供了一系列静态方法，可以简化获取、解析和操作注解的过程。
+
+1.  寻找指定元素上的指定类型的注解
+`public static <A extends Annotation> A findAnnotation(AnnotatedElement ae, Class<A> annotationType)`
+2. 获取注解的属性和值的映射
+`public static Map<String, Object> getAnnotationAttributes(Annotation annotation)`
+3.  获取注解的值
+`public static Object getValue(Annotation annotation)`
+
+
+ 
